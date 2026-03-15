@@ -1,0 +1,115 @@
+{% if form.non_field_errors %}
+<div class="alert alert-danger">
+  {{ form.non_field_errors }}
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.asset_tag.id_for_label }}">Asset Tag</label>
+    {{ form.asset_tag }}
+    <div class="text-danger small">{{ form.asset_tag.errors }}</div>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.name.id_for_label }}">Name</label>
+    {{ form.name }}
+    <div class="text-danger small">{{ form.name.errors }}</div>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.category.id_for_label }}">Category</label>
+    <select
+      name="{{ form.category.html_name }}"
+      id="{{ form.category.id_for_label }}"
+      class="form-select"
+      hx-get="{% url 'assets:asset_type_field' %}"
+      hx-target="#asset-type-field"
+      hx-trigger="change"
+      hx-include="#id_asset_type">
+      {% for value, label in form.category.field.choices %}
+      <option value="{{ value }}"{% if form.category.value|stringformat:"s" == value|stringformat:"s" %} selected{% endif %}>
+        {{ label }}
+      </option>
+      {% endfor %}
+    </select>
+    <div class="text-danger small">{{ form.category.errors }}</div>
+  </div>
+  <div class="col-md-6" id="asset-type-field">
+    {% include "assets/partials/asset_type_field.html" with asset_types=form.fields.asset_type.queryset selected_asset_type_id=form.asset_type.value|stringformat:"s" asset_type_errors=form.asset_type.errors %}
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.serial_number.id_for_label }}">Serial Number</label>
+    {{ form.serial_number }}
+    <div class="text-danger small">{{ form.serial_number.errors }}</div>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.department.id_for_label }}">Department</label>
+    {{ form.department }}
+    <div class="text-danger small">{{ form.department.errors }}</div>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.location.id_for_label }}">Location</label>
+    {{ form.location }}
+    <div class="text-danger small">{{ form.location.errors }}</div>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.purchase.id_for_label }}">Purchase Record</label>
+    {{ form.purchase }}
+    <div class="text-danger small">{{ form.purchase.errors }}</div>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.status.id_for_label }}">Status</label>
+    {{ form.status }}
+    <div class="text-danger small">{{ form.status.errors }}</div>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label" for="{{ form.purchase_date.id_for_label }}">Purchase Date</label>
+    {{ form.purchase_date }}
+    <div class="text-danger small">{{ form.purchase_date.errors }}</div>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label" for="{{ form.purchase_cost.id_for_label }}">Purchase Cost</label>
+    {{ form.purchase_cost }}
+    <div class="text-danger small">{{ form.purchase_cost.errors }}</div>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label" for="{{ form.warranty_expiry.id_for_label }}">Warranty Expiry</label>
+    {{ form.warranty_expiry }}
+    <div class="text-danger small">{{ form.warranty_expiry.errors }}</div>
+  </div>
+  <div class="col-12">
+    <hr class="my-1">
+    <div>
+      <h6 class="mb-1">Depreciation</h6>
+      <p class="text-muted mb-0 small">
+        Depreciation is calculated using the asset purchase cost and straight-line method.
+      </p>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label" for="{{ form.useful_life_years.id_for_label }}">Useful Life (Years)</label>
+    {{ form.useful_life_years }}
+    {% if form.useful_life_years.help_text %}
+    <div class="form-text">{{ form.useful_life_years.help_text }}</div>
+    {% endif %}
+    <div class="text-danger small">{{ form.useful_life_years.errors }}</div>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label" for="{{ form.salvage_value.id_for_label }}">Salvage Value</label>
+    {{ form.salvage_value }}
+    <div class="text-danger small">{{ form.salvage_value.errors }}</div>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label" for="{{ form.depreciation_start_date.id_for_label }}">Depreciation Start Date</label>
+    {{ form.depreciation_start_date }}
+    <div class="text-danger small">{{ form.depreciation_start_date.errors }}</div>
+  </div>
+  <div class="col-12">
+    <div class="form-check mt-2">
+      {{ form.is_active }}
+      <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+        Asset is active
+      </label>
+    </div>
+    <div class="text-danger small">{{ form.is_active.errors }}</div>
+  </div>
+</div>

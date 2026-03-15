@@ -1,0 +1,68 @@
+{% if form.non_field_errors %}
+<div class="alert alert-danger">
+  {{ form.non_field_errors }}
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.asset.id_for_label }}">Asset</label>
+    {{ form.asset }}
+    <div class="text-danger small">{{ form.asset.errors }}</div>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.assignee_identifier.id_for_label }}">Assignee ID</label>
+    {{ form.assignee_identifier }}
+    <div class="text-danger small">{{ form.assignee_identifier.errors }}</div>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.assignee_name.id_for_label }}">Assignee Name</label>
+    {{ form.assignee_name }}
+    <div class="text-danger small">{{ form.assignee_name.errors }}</div>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.assignee_contact.id_for_label }}">Assignee Contact</label>
+    {{ form.assignee_contact }}
+    <div class="text-danger small">{{ form.assignee_contact.errors }}</div>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label" for="{{ form.assigned_date.id_for_label }}">Assigned Date</label>
+    {{ form.assigned_date }}
+    <div class="text-danger small">{{ form.assigned_date.errors }}</div>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label" for="{{ form.expected_return.id_for_label }}">Expected Return</label>
+    {{ form.expected_return }}
+    <div class="text-danger small">{{ form.expected_return.errors }}</div>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label" for="{{ form.returned_date.id_for_label }}">Returned Date</label>
+    {{ form.returned_date }}
+    <div class="text-danger small">{{ form.returned_date.errors }}</div>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.issued_by.id_for_label }}">Issued By</label>
+    {{ form.issued_by }}
+    <div class="text-danger small">{{ form.issued_by.errors }}</div>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.purpose.id_for_label }}">Purpose</label>
+    {{ form.purpose }}
+    <div class="text-danger small">{{ form.purpose.errors }}</div>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.condition_at_issue.id_for_label }}">Condition At Issue</label>
+    {{ form.condition_at_issue }}
+    <div class="text-danger small">{{ form.condition_at_issue.errors }}</div>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.condition_at_return.id_for_label }}">Condition At Return</label>
+    {{ form.condition_at_return }}
+    <div class="text-danger small">{{ form.condition_at_return.errors }}</div>
+  </div>
+  <div class="col-12">
+    <label class="form-label" for="{{ form.notes.id_for_label }}">Notes</label>
+    {{ form.notes }}
+    <div class="text-danger small">{{ form.notes.errors }}</div>
+  </div>
+</div>

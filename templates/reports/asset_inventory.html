@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-12">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <div>
+        <h4 class="mb-1">Asset Inventory</h4>
+        <p class="text-muted mb-0">Complete register of assets with ownership, location, and status.</p>
+      </div>
+      {% include "reports/partials/export_actions.html" %}
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Total</p>
+      <h4 class="mb-0">{{ stats.total }}</h4>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Available</p>
+      <h4 class="mb-0">{{ stats.available }}</h4>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Assigned</p>
+      <h4 class="mb-0">{{ stats.assigned }}</h4>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Maintenance</p>
+      <h4 class="mb-0">{{ stats.maintenance }}</h4>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="border rounded-3 bg-white p-4">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Category</th>
+              <th>Type</th>
+              <th>Department</th>
+              <th>Location</th>
+              <th>Status</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for asset in assets %}
+            <tr>
+              <td>
+                <strong>{{ asset.asset_tag }}</strong><br>
+                <span class="text-muted">{{ asset.name }}</span>
+              </td>
+              <td>{{ asset.category.name }}</td>
+              <td>{{ asset.asset_type.name }}</td>
+              <td>{{ asset.department.name|default:"-" }}</td>
+              <td>
+                {% if asset.current_location_name %}
+                {{ asset.current_location_name }}
+                {% if asset.current_location_building %}<br><span class="text-muted">{{ asset.current_location_building }}</span>{% endif %}
+                {% if asset.current_location_room %}<br><span class="text-muted">Room {{ asset.current_location_room }}</span>{% endif %}
+                {% else %}
+                -
+                {% endif %}
+              </td>
+              <td>{{ asset.get_status_display }}</td>
+              <td class="text-end">
+                <a href="{% url 'assets:asset_detail' asset.pk %}" class="btn btn-sm btn-outline-primary">View</a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="7" class="text-center text-muted py-4">No assets found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

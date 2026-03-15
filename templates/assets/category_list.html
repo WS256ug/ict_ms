@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="mb-1">Asset Categories</h5>
+          <span class="text-muted">Browse categories and their current asset counts.</span>
+        </div>
+        <a href="{% url 'assets:asset_list' %}" class="btn btn-outline-primary btn-sm">View Assets</a>
+      </div>
+      <div class="card-body table-border-style">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Types</th>
+                <th>Assets</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for category in categories %}
+              <tr>
+                <td>{{ category.name }}</td>
+                <td>{{ category.description|default:"-" }}</td>
+                <td>{{ category.type_count }}</td>
+                <td>{{ category.asset_count }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="4" class="text-center text-muted py-4">No asset categories found.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

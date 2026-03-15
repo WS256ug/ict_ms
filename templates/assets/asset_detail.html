@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-12">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div>
+        <h4 class="mb-1">{{ asset.asset_tag }}</h4>
+        <p class="text-muted mb-0">{{ asset.name }}</p>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{% url 'assets:asset_list' %}" class="btn btn-outline-secondary">Back</a>
+        <a href="{% url 'assets:assignment_list' %}?asset={{ asset.pk }}" class="btn btn-outline-primary">Assignments</a>
+        <a href="{% url 'assets:maintenance_list' %}?asset={{ asset.pk }}" class="btn btn-outline-primary">Maintenance</a>
+        {% if request.user.is_admin or request.user.is_technician %}
+        <a href="{% url 'assets:assignment_create' %}?asset={{ asset.pk }}" class="btn btn-outline-primary">Assign Asset</a>
+        <a href="{% url 'assets:maintenance_create' %}?asset={{ asset.pk }}" class="btn btn-outline-primary">Log Maintenance</a>
+        <a href="{% url 'assets:asset_update' asset.pk %}" class="btn btn-primary">Edit Asset</a>
+        <a href="{% url 'assets:asset_delete' asset.pk %}" class="btn btn-outline-danger">Delete</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if messages %}
+  <div class="col-12">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">Overview</h5>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-5">Category</dt>
+          <dd class="col-7">{{ asset.category }}</dd>
+          <dt class="col-5">Type</dt>
+          <dd class="col-7">{{ asset.asset_type }}</dd>
+          <dt class="col-5">Status</dt>
+          <dd class="col-7">{{ asset.get_status_display }}</dd>
+          <dt class="col-5">Department</dt>
+          <dd class="col-7">{{ asset.department|default:"-" }}</dd>
+          <dt class="col-5">Serial</dt>
+          <dd class="col-7">{{ asset.serial_number|default:"-" }}</dd>
+          <dt class="col-5">Location</dt>
+          <dd class="col-7">{{ current_location|default:"-" }}</dd>
+          <dt class="col-5">Assigned To</dt>
+          <dd class="col-7">
+            {% if current_assignment %}
+            {{ current_assignment.assignee_display }}
+            {% else %}
+            -
+            {% endif %}
+          </dd>
+          <dt class="col-5">Purchase Cost</dt>
+          <dd class="col-7">
+            {% if asset.purchase_cost or asset.purchase_cost == 0 %}
+            {{ asset.purchase_cost|floatformat:2 }}
+            {% else %}
+            -
+            {% endif %}
+          </dd>
+          <dt class="col-5">Current Value</dt>
+          <dd class="col-7">
+            {% if asset.current_value or asset.current_value == 0 %}
+            {{ asset.current_value|floatformat:2 }}
+            {% else %}
+            -
+            {% endif %}
+          </dd>
+          <dt class="col-5">Warranty</dt>
+          <dd class="col-7">{{ asset.warranty_expiry|default:"-" }}</dd>
+          <dt class="col-5">Active</dt>
+          <dd class="col-7">{{ asset.is_active|yesno:"Yes,No" }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">Depreciation</h5>
+      </div>
+      <div class="card-body">
+        {% if depreciation %}
+        <dl class="row mb-0">
+          <dt class="col-6">Method</dt>
+          <dd class="col-6">{{ depreciation.get_depreciation_method_display }}</dd>
+          <dt class="col-6">Start Date</dt>
+          <dd class="col-6">{{ depreciation.start_date }}</dd>
+          <dt class="col-6">Useful Life</dt>
+          <dd class="col-6">{{ depreciation.useful_life_years }} year{{ depreciation.useful_life_years|pluralize }}</dd>
+          <dt class="col-6">Salvage Value</dt>
+          <dd class="col-6">{{ depreciation.salvage_value|floatformat:2 }}</dd>
+          <dt class="col-6">Annual Depreciation</dt>
+          <dd class="col-6">{{ depreciation.annual_depreciation|floatformat:2 }}</dd>
+          <dt class="col-6">Accumulated</dt>
+          <dd class="col-6">{{ depreciation.accumulated_depreciation|floatformat:2 }}</dd>
+          <dt class="col-6">Current Book Value</dt>
+          <dd class="col-6">{{ depreciation.current_value|floatformat:2 }}</dd>
+        </dl>
+        {% else %}
+        <p class="text-muted mb-0">
+          No depreciation record has been created for this asset yet. Add purchase cost and depreciation details to start tracking it.
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">Location History</h5>
+      </div>
+      <div class="card-body table-border-style">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Location</th>
+                <th>Moved By</th>
+                <th>Moved At</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for record in location_history %}
+              <tr>
+                <td>{{ record.location }}</td>
+                <td>{{ record.moved_by|default:"-" }}</td>
+                <td>{{ record.moved_at }}</td>
+                <td>{{ record.notes|default:"-" }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="text-muted text-center py-3">No location history.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center gap-2">
+        <h5 class="mb-0">Assignments</h5>
+        <div class="d-flex gap-2">
+          <a href="{% url 'assets:assignment_list' %}?asset={{ asset.pk }}" class="btn btn-sm btn-outline-secondary">View All</a>
+          {% if request.user.is_admin or request.user.is_technician %}
+          <a href="{% url 'assets:assignment_create' %}?asset={{ asset.pk }}" class="btn btn-sm btn-primary">New Assignment</a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="card-body table-border-style">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Assignee</th>
+                <th>ID</th>
+                <th>Contact</th>
+                <th>Purpose</th>
+                <th>Issued By</th>
+                <th>Assigned</th>
+                <th>Expected Return</th>
+                <th>Issue Condition</th>
+                <th>Return Condition</th>
+                <th>Returned</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for assignment in assignments %}
+              <tr>
+                <td>{{ assignment.assignee_display }}</td>
+                <td>{{ assignment.assignee_identifier|default:"-" }}</td>
+                <td>{{ assignment.assignee_contact|default:"-" }}</td>
+                <td>{{ assignment.purpose|default:"-" }}</td>
+                <td>{{ assignment.issued_by|default:"-" }}</td>
+                <td>{{ assignment.assigned_date }}</td>
+                <td>{{ assignment.expected_return|default:"-" }}</td>
+                <td>{{ assignment.condition_at_issue|default:"-" }}</td>
+                <td>{{ assignment.condition_at_return|default:"-" }}</td>
+                <td>{{ assignment.returned_date|default:"Active" }}</td>
+                <td class="text-end">
+                  <a href="{% url 'assets:assignment_detail' assignment.pk %}" class="btn btn-sm btn-outline-primary">View</a>
+                  {% if request.user.is_admin or request.user.is_technician %}
+                  <a href="{% url 'assets:assignment_update' assignment.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="11" class="text-muted text-center py-3">No assignments found.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center gap-2">
+        <h5 class="mb-0">Maintenance</h5>
+        <div class="d-flex gap-2">
+          <a href="{% url 'assets:maintenance_list' %}?asset={{ asset.pk }}" class="btn btn-sm btn-outline-secondary">View All</a>
+          {% if request.user.is_admin or request.user.is_technician %}
+          <a href="{% url 'assets:maintenance_create' %}?asset={{ asset.pk }}" class="btn btn-sm btn-primary">New Record</a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="card-body table-border-style">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Technician</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for record in maintenance_records %}
+              <tr>
+                <td>{{ record.get_maintenance_type_display }}</td>
+                <td>{{ record.get_status_display }}</td>
+                <td>{{ record.start_date }}</td>
+                <td>{{ record.end_date|default:"-" }}</td>
+                <td>{{ record.technician|default:"-" }}</td>
+                <td class="text-end">
+                  <a href="{% url 'assets:maintenance_detail' record.pk %}" class="btn btn-sm btn-outline-primary">View</a>
+                  {% if request.user.is_admin or request.user.is_technician %}
+                  <a href="{% url 'assets:maintenance_update' record.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="6" class="text-muted text-center py-3">No maintenance records.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">Installed Software</h5>
+      </div>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+          {% for item in installed_software %}
+          <li class="list-group-item px-0 d-flex justify-content-between">
+            <span>{{ item.software }}</span>
+            <span class="text-muted">{{ item.installed_date|default:"-" }}</span>
+          </li>
+          {% empty %}
+          <li class="list-group-item px-0 text-muted">No installed software.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">Attributes</h5>
+      </div>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+          {% for attribute in attribute_values %}
+          <li class="list-group-item px-0 d-flex justify-content-between gap-3">
+            <span>{{ attribute.attribute.name }}</span>
+            <span class="text-muted text-end">{{ attribute.value }}</span>
+          </li>
+          {% empty %}
+          <li class="list-group-item px-0 text-muted">No extra attributes recorded.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">Recent Activity</h5>
+      </div>
+      <div class="card-body table-border-style">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>Performed By</th>
+                <th>When</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for log in activity_logs %}
+              <tr>
+                <td>{{ log.action }}</td>
+                <td>{{ log.performed_by|default:"-" }}</td>
+                <td>{{ log.timestamp }}</td>
+                <td>{{ log.description|default:"-" }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="text-muted text-center py-3">No activity has been logged yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

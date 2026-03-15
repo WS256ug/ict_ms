@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-12">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <div>
+        <h4 class="mb-1">Assets by Location</h4>
+        <p class="text-muted mb-0">Current asset distribution based on the latest recorded location history.</p>
+      </div>
+      {% include "reports/partials/export_actions.html" %}
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Locations</p>
+      <h4 class="mb-0">{{ stats.locations }}</h4>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Assets Counted</p>
+      <h4 class="mb-0">{{ stats.assets }}</h4>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">No Location History</p>
+      <h4 class="mb-0">{{ stats.without_location }}</h4>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="border rounded-3 bg-white p-4">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Location</th>
+              <th>Total Assets</th>
+              <th>Available</th>
+              <th>Assigned</th>
+              <th>Maintenance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in location_rows %}
+            <tr>
+              <td>{{ row.label }}</td>
+              <td>{{ row.total }}</td>
+              <td>{{ row.available }}</td>
+              <td>{{ row.assigned }}</td>
+              <td>{{ row.maintenance }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="text-center text-muted py-4">No asset location records found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

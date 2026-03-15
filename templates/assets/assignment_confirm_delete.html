@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="border border-danger rounded-3 bg-white p-4">
+      <h5 class="text-danger mb-4">Delete Assignment</h5>
+      <p class="mb-3">
+        You are about to delete the assignment for <strong>{{ assignment.asset.asset_tag }}</strong>.
+      </p>
+      <p class="text-muted">
+        This will remove the assignment history entry for {{ assignment.assignee_display }}.
+      </p>
+
+      <dl class="row mb-4">
+        <dt class="col-4">Asset</dt>
+        <dd class="col-8">{{ assignment.asset.name }}</dd>
+        <dt class="col-4">Assigned To</dt>
+        <dd class="col-8">{{ assignment.assignee_display }}</dd>
+        <dt class="col-4">Assignee ID</dt>
+        <dd class="col-8">{{ assignment.assignee_identifier|default:"-" }}</dd>
+        <dt class="col-4">Assigned Date</dt>
+        <dd class="col-8">{{ assignment.assigned_date }}</dd>
+        <dt class="col-4">Status</dt>
+        <dd class="col-8">{{ assignment.is_active|yesno:"Active,Returned" }}</dd>
+      </dl>
+
+      <form method="post" class="d-flex gap-2">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Yes, Delete Assignment</button>
+        <a href="{% url 'assets:assignment_detail' assignment.pk %}" class="btn btn-outline-secondary">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

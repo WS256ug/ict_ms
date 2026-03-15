@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card border-danger">
+      <div class="card-header bg-danger text-white">
+        <h5 class="mb-0">Delete Asset</h5>
+      </div>
+      <div class="card-body">
+        <p class="mb-3">
+          You are about to delete <strong>{{ asset.asset_tag }}</strong> - {{ asset.name }}.
+        </p>
+        <p class="text-muted">
+          This action cannot be undone and will remove the asset record from the system.
+        </p>
+
+        <dl class="row mb-4">
+          <dt class="col-4">Category</dt>
+          <dd class="col-8">{{ asset.category }}</dd>
+          <dt class="col-4">Type</dt>
+          <dd class="col-8">{{ asset.asset_type }}</dd>
+          <dt class="col-4">Department</dt>
+          <dd class="col-8">{{ asset.department|default:"-" }}</dd>
+        </dl>
+
+        <form method="post" class="d-flex gap-2">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">Yes, Delete Asset</button>
+          <a href="{% url 'assets:asset_detail' asset.pk %}" class="btn btn-outline-secondary">Cancel</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

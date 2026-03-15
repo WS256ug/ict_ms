@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-12">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <div>
+        <h4 class="mb-1">{{ location.name }}</h4>
+        <p class="text-muted mb-0">{{ location.building|default:"No building" }}{% if location.room %} - Room {{ location.room }}{% endif %}</p>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{% url 'assets:location_list' %}" class="btn btn-outline-secondary">All Locations</a>
+        <a href="{% url 'assets:location_update' location.pk %}" class="btn btn-primary">Edit Location</a>
+        <a href="{% url 'assets:location_delete' location.pk %}" class="btn btn-outline-danger">Delete</a>
+      </div>
+    </div>
+  </div>
+
+  {% if messages %}
+  <div class="col-12">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="col-lg-4">
+    <div class="border rounded-3 bg-white p-4 h-100">
+      <p class="text-muted text-uppercase small mb-1">Assets In History</p>
+      <h5 class="mb-3">{{ location.asset_count }}</h5>
+      <p class="text-muted text-uppercase small mb-1">Building</p>
+      <p class="mb-3">{{ location.building|default:"-" }}</p>
+      <p class="text-muted text-uppercase small mb-1">Room</p>
+      <p class="mb-0">{{ location.room|default:"-" }}</p>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="border rounded-3 bg-white p-4 h-100">
+      <h5 class="mb-3">Location Details</h5>
+      <dl class="row mb-0">
+        <dt class="col-sm-4">Name</dt>
+        <dd class="col-sm-8">{{ location.name }}</dd>
+
+        <dt class="col-sm-4">Building</dt>
+        <dd class="col-sm-8">{{ location.building|default:"-" }}</dd>
+
+        <dt class="col-sm-4">Room</dt>
+        <dd class="col-sm-8">{{ location.room|default:"-" }}</dd>
+
+        <dt class="col-sm-4">Description</dt>
+        <dd class="col-sm-8">{{ location.description|default:"-" }}</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="border rounded-3 bg-white p-4">
+      <h5 class="mb-3">Recent Location History</h5>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Moved By</th>
+              <th>Moved At</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for record in history %}
+            <tr>
+              <td>
+                <strong>{{ record.asset.asset_tag }}</strong><br>
+                <span class="text-muted">{{ record.asset.name }}</span>
+              </td>
+              <td>{{ record.moved_by|default:"-" }}</td>
+              <td>{{ record.moved_at }}</td>
+              <td>{{ record.notes|default:"-" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" class="text-center text-muted py-3">No asset history recorded for this location.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

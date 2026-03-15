@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-12">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <div>
+        <h4 class="mb-1">Audit Report</h4>
+        <p class="text-muted mb-0">Audit sessions and issues identified during asset verification.</p>
+      </div>
+      {% include "reports/partials/export_actions.html" %}
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Audits</p>
+      <h4 class="mb-0">{{ stats.audits }}</h4>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Items Audited</p>
+      <h4 class="mb-0">{{ stats.items }}</h4>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Missing</p>
+      <h4 class="mb-0">{{ stats.missing }}</h4>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Damaged</p>
+      <h4 class="mb-0">{{ stats.damaged }}</h4>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="border rounded-3 bg-white p-4">
+      <h5 class="mb-3">Audit Sessions</h5>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Conducted By</th>
+              <th>Total Items</th>
+              <th>Found</th>
+              <th>Missing</th>
+              <th>Damaged</th>
+              <th>Relocated</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for audit in audits %}
+            <tr>
+              <td>{{ audit.audit_date }}</td>
+              <td>{{ audit.conducted_by|default:"-" }}</td>
+              <td>{{ audit.total_items }}</td>
+              <td>{{ audit.found_total }}</td>
+              <td>{{ audit.missing_total }}</td>
+              <td>{{ audit.damaged_total }}</td>
+              <td>{{ audit.relocated_total }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="7" class="text-center text-muted py-4">No audit records found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="border rounded-3 bg-white p-4">
+      <h5 class="mb-3">Audit Issues</h5>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Audit Date</th>
+              <th>Asset</th>
+              <th>Status</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in issue_items %}
+            <tr>
+              <td>{{ item.audit.audit_date }}</td>
+              <td>
+                <strong>{{ item.asset.asset_tag }}</strong><br>
+                <span class="text-muted">{{ item.asset.name }}</span>
+              </td>
+              <td>{{ item.get_status_display }}</td>
+              <td>{{ item.notes|default:"-" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" class="text-center text-muted py-4">No audit issues recorded.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

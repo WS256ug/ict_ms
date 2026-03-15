@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card border-danger">
+      <div class="card-header bg-danger text-white">
+        <h5 class="mb-0">Delete Maintenance Record</h5>
+      </div>
+      <div class="card-body">
+        <p class="mb-3">
+          You are about to delete the maintenance record for <strong>{{ record.asset.asset_tag }}</strong>.
+        </p>
+        <p class="text-muted">
+          The asset status will be recalculated automatically after this record is removed.
+        </p>
+
+        <dl class="row mb-4">
+          <dt class="col-4">Asset</dt>
+          <dd class="col-8">{{ record.asset.name }}</dd>
+          <dt class="col-4">Type</dt>
+          <dd class="col-8">{{ record.get_maintenance_type_display }}</dd>
+          <dt class="col-4">Status</dt>
+          <dd class="col-8">{{ record.get_status_display }}</dd>
+          <dt class="col-4">Start Date</dt>
+          <dd class="col-8">{{ record.start_date }}</dd>
+        </dl>
+
+        <form method="post" class="d-flex gap-2">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">Yes, Delete Record</button>
+          <a href="{% url 'assets:maintenance_detail' record.pk %}" class="btn btn-outline-secondary">Cancel</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="border border-danger rounded-3 bg-white p-4">
+      <h5 class="text-danger mb-3">Delete Department</h5>
+      <p class="mb-3">
+        You are about to delete <strong>{{ department.name }}</strong> ({{ department.code }}).
+      </p>
+      <p class="text-muted">
+        Users and assets linked to this department will keep their records, but the department reference will be removed.
+      </p>
+
+      <dl class="row mb-4">
+        <dt class="col-4">Users</dt>
+        <dd class="col-8">{{ department.user_count }}</dd>
+        <dt class="col-4">Assets</dt>
+        <dd class="col-8">{{ department.asset_count }}</dd>
+      </dl>
+
+      <form method="post" class="d-flex gap-2">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Yes, Delete Department</button>
+        <a href="{% url 'accounts:department_detail' department.pk %}" class="btn btn-outline-secondary">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% if form.non_field_errors %}
+<div class="alert alert-danger">
+  {{ form.non_field_errors }}
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.asset.id_for_label }}">Asset</label>
+    {{ form.asset }}
+    <div class="text-danger small">{{ form.asset.errors }}</div>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.maintenance_type.id_for_label }}">Maintenance Type</label>
+    {{ form.maintenance_type }}
+    <div class="text-danger small">{{ form.maintenance_type.errors }}</div>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label" for="{{ form.start_date.id_for_label }}">Start Date</label>
+    {{ form.start_date }}
+    <div class="text-danger small">{{ form.start_date.errors }}</div>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label" for="{{ form.end_date.id_for_label }}">End Date</label>
+    {{ form.end_date }}
+    <div class="text-danger small">{{ form.end_date.errors }}</div>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label" for="{{ form.status.id_for_label }}">Status</label>
+    {{ form.status }}
+    <div class="text-danger small">{{ form.status.errors }}</div>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.technician.id_for_label }}">Technician</label>
+    {{ form.technician }}
+    <div class="text-danger small">{{ form.technician.errors }}</div>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.cost.id_for_label }}">Cost</label>
+    {{ form.cost }}
+    <div class="text-danger small">{{ form.cost.errors }}</div>
+  </div>
+  <div class="col-12">
+    <label class="form-label" for="{{ form.issue_description.id_for_label }}">Issue Description</label>
+    {{ form.issue_description }}
+    <div class="text-danger small">{{ form.issue_description.errors }}</div>
+  </div>
+  <div class="col-12">
+    <label class="form-label" for="{{ form.notes.id_for_label }}">Notes</label>
+    {{ form.notes }}
+    <div class="text-danger small">{{ form.notes.errors }}</div>
+  </div>
+</div>

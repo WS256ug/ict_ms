@@ -1,0 +1,18 @@
+<svg width="500" height="160" viewBox="0 0 500 160" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+  <g transform="translate(20 28)">
+    <path d="M12 56C18 32 38 16 64 14C82 12 100 18 114 30" stroke="#0F3D8A" stroke-width="6" stroke-linecap="round"/>
+    <path d="M13 60C36 74 64 82 94 80C106 79 117 75 127 69" stroke="#0F3D8A" stroke-width="6" stroke-linecap="round"/>
+    <path d="M28 18C46 34 62 58 67 82" stroke="#0F3D8A" stroke-width="6" stroke-linecap="round"/>
+    <path d="M24 66C48 55 76 47 122 40" stroke="#39C6F4" stroke-width="6" stroke-linecap="round"/>
+    <path d="M36 22C63 18 91 24 120 36" stroke="#39C6F4" stroke-width="6" stroke-linecap="round"/>
+    <path d="M75 14C93 28 108 48 115 72" stroke="#0F3D8A" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="11" cy="55" r="11" fill="#0F3D8A"/>
+    <circle cx="27" cy="18" r="11" fill="#0F3D8A"/>
+    <circle cx="76" cy="12" r="11" fill="#0F3D8A"/>
+    <circle cx="124" cy="37" r="11" fill="#39C6F4"/>
+    <circle cx="97" cy="80" r="11" fill="#0F3D8A"/>
+    <circle cx="34" cy="84" r="11" fill="#0F3D8A"/>
+  </g>
+  <text x="172" y="94" fill="#0F3D8A" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="700" letter-spacing="-2" textLength="130" lengthAdjust="spacingAndGlyphs">ICT</text>
+  <text x="308" y="94" fill="#08C4F2" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="700" letter-spacing="-2" textLength="108" lengthAdjust="spacingAndGlyphs">MS</text>
+</svg>

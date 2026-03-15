@@ -1,0 +1,17 @@
+<label class="form-label" for="id_asset_type">Asset Type</label>
+<select
+  name="asset_type"
+  id="id_asset_type"
+  class="form-select"
+  {% if not asset_types %}disabled{% endif %}>
+  <option value="">Select asset type</option>
+  {% for asset_type in asset_types %}
+  <option value="{{ asset_type.id }}"{% if selected_asset_type_id == asset_type.id|stringformat:"s" %} selected{% endif %}>
+    {{ asset_type.name }}
+  </option>
+  {% endfor %}
+</select>
+<div class="form-text">Asset types update automatically based on the selected category.</div>
+{% if asset_type_errors %}
+<div class="text-danger small">{{ asset_type_errors }}</div>
+{% endif %}

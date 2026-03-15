@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-12">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <div>
+        <h4 class="mb-1">Asset Assignments</h4>
+        <p class="text-muted mb-0">
+          {% if selected_asset %}
+          Assignment history for <strong>{{ selected_asset.asset_tag }}</strong> - {{ selected_asset.name }}.
+          {% else %}
+          Track issued assets, returns, and assignment history.
+          {% endif %}
+        </p>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{% url 'assets:asset_list' %}" class="btn btn-outline-secondary">Assets</a>
+        {% if request.user.is_admin or request.user.is_technician %}
+        <a
+          href="{% if selected_asset %}{% url 'assets:assignment_create' %}?asset={{ selected_asset.pk }}{% else %}{% url 'assets:assignment_create' %}{% endif %}"
+          class="btn btn-primary">
+          <i class="ti ti-plus me-1"></i> New Assignment
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if messages %}
+  <div class="col-12">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="col-md-4">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Total</p>
+      <h4 class="mb-0">{{ stats.total }}</h4>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Active</p>
+      <h4 class="mb-0">{{ stats.active }}</h4>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Returned</p>
+      <h4 class="mb-0">{{ stats.returned }}</h4>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="border rounded-3 bg-white p-4">
+      <h5 class="mb-4">Filter Assignments</h5>
+      <form method="get">
+        <div class="row g-3">
+          {% if selected_asset %}
+          <input type="hidden" name="asset" value="{{ selected_asset.pk }}">
+          {% endif %}
+          <div class="col-md-8">
+            <label class="form-label" for="id_search">Search</label>
+            <input
+              type="text"
+              name="search"
+              id="id_search"
+              value="{{ search }}"
+              class="form-control"
+              placeholder="Search by asset, assignee, issuer, or purpose">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="id_state">Status</label>
+            <select name="state" id="id_state" class="form-select">
+              <option value="" {% if not state %}selected{% endif %}>All assignments</option>
+              <option value="active" {% if state == "active" %}selected{% endif %}>Active only</option>
+              <option value="returned" {% if state == "returned" %}selected{% endif %}>Returned only</option>
+            </select>
+          </div>
+          <div class="col-12 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+            <a
+              href="{% if selected_asset %}{% url 'assets:assignment_list' %}?asset={{ selected_asset.pk }}{% else %}{% url 'assets:assignment_list' %}{% endif %}"
+              class="btn btn-outline-secondary">
+              Reset
+            </a>
+            {% if selected_asset %}
+            <a href="{% url 'assets:assignment_list' %}" class="btn btn-outline-secondary">Clear Asset Filter</a>
+            {% endif %}
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="border rounded-3 bg-white p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Assignment Register</h5>
+        <span class="text-muted">{{ page_obj.paginator.count }} record{{ page_obj.paginator.count|pluralize }}</span>
+      </div>
+      <div class="table-border-style">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead>
+              <tr>
+                <th>Asset</th>
+                <th>Assigned To</th>
+                <th>ID</th>
+                <th>Contact</th>
+                <th>Purpose</th>
+                <th>Assigned</th>
+                <th>Expected Return</th>
+                <th>Returned</th>
+                <th>Issued By</th>
+                <th>Status</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for assignment in page_obj %}
+              <tr>
+                <td>
+                  <strong>{{ assignment.asset.asset_tag }}</strong><br>
+                  <span class="text-muted">{{ assignment.asset.name }}</span>
+                </td>
+                <td>{{ assignment.assignee_display }}</td>
+                <td>{{ assignment.assignee_identifier|default:"-" }}</td>
+                <td>{{ assignment.assignee_contact|default:"-" }}</td>
+                <td>{{ assignment.purpose|default:"-" }}</td>
+                <td>{{ assignment.assigned_date }}</td>
+                <td>{{ assignment.expected_return|default:"-" }}</td>
+                <td>{{ assignment.returned_date|default:"-" }}</td>
+                <td>{{ assignment.issued_by|default:"-" }}</td>
+                <td>
+                  {% if assignment.is_active %}
+                  <span class="badge bg-primary">Active</span>
+                  {% else %}
+                  <span class="badge bg-success">Returned</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  <a href="{% url 'assets:assignment_detail' assignment.pk %}" class="btn btn-sm btn-outline-primary">View</a>
+                  {% if request.user.is_admin or request.user.is_technician %}
+                  <a href="{% url 'assets:assignment_update' assignment.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                  <a href="{% url 'assets:assignment_delete' assignment.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="11" class="text-center text-muted py-4">No assignments found.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% with filter_params=filter_querystring.urlencode %}
+        {% if page_obj.paginator.num_pages > 1 %}
+        <nav class="mt-3" aria-label="Assignment pagination">
+          <ul class="pagination mb-0">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?{% if filter_params %}{{ filter_params }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">Previous</span></li>
+            {% endif %}
+
+            <li class="page-item active">
+              <span class="page-link">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            </li>
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?{% if filter_params %}{{ filter_params }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">Next</span></li>
+            {% endif %}
+          </ul>
+        </nav>
+        {% endif %}
+        {% endwith %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

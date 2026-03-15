@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-12">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <div>
+        <h4 class="mb-1">Assigned Assets</h4>
+        <p class="text-muted mb-0">Active assignments showing who currently holds each asset.</p>
+      </div>
+      {% include "reports/partials/export_actions.html" %}
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Active Assignments</p>
+      <h4 class="mb-0">{{ stats.active }}</h4>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Overdue Returns</p>
+      <h4 class="mb-0">{{ stats.overdue }}</h4>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">No Return Date</p>
+      <h4 class="mb-0">{{ stats.without_return_date }}</h4>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="border rounded-3 bg-white p-4">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Assigned To</th>
+              <th>ID</th>
+              <th>Contact</th>
+              <th>Department</th>
+              <th>Assigned</th>
+              <th>Expected Return</th>
+              <th>Issued By</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for assignment in assignments %}
+            <tr>
+              <td>
+                <strong>{{ assignment.asset.asset_tag }}</strong><br>
+                <span class="text-muted">{{ assignment.asset.name }}</span>
+              </td>
+              <td>{{ assignment.assignee_display }}</td>
+              <td>{{ assignment.assignee_identifier|default:"-" }}</td>
+              <td>{{ assignment.assignee_contact|default:"-" }}</td>
+              <td>{{ assignment.asset.department.name|default:"-" }}</td>
+              <td>{{ assignment.assigned_date }}</td>
+              <td>{{ assignment.expected_return|default:"-" }}</td>
+              <td>{{ assignment.issued_by|default:"-" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8" class="text-center text-muted py-4">No active assignments found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

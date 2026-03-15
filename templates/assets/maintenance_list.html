@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-12">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <div>
+        <h4 class="mb-1">Maintenance Records</h4>
+        <p class="text-muted mb-0">
+          {% if selected_asset %}
+          Maintenance history for <strong>{{ selected_asset.asset_tag }}</strong> - {{ selected_asset.name }}.
+          {% else %}
+          Track repair, upgrade, and inspection work for assets.
+          {% endif %}
+        </p>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{% url 'assets:asset_list' %}" class="btn btn-outline-secondary">Assets</a>
+        {% if request.user.is_admin or request.user.is_technician %}
+        <a
+          href="{% if selected_asset %}{% url 'assets:maintenance_create' %}?asset={{ selected_asset.pk }}{% else %}{% url 'assets:maintenance_create' %}{% endif %}"
+          class="btn btn-primary">
+          <i class="ti ti-plus me-1"></i> New Record
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if messages %}
+  <div class="col-12">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-body">
+        <p class="text-muted text-uppercase small mb-1">Total</p>
+        <h4 class="mb-0">{{ stats.total }}</h4>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-body">
+        <p class="text-muted text-uppercase small mb-1">Open</p>
+        <h4 class="mb-0">{{ stats.open }}</h4>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-body">
+        <p class="text-muted text-uppercase small mb-1">In Progress</p>
+        <h4 class="mb-0">{{ stats.in_progress }}</h4>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-body">
+        <p class="text-muted text-uppercase small mb-1">Completed</p>
+        <h4 class="mb-0">{{ stats.completed }}</h4>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">Filter Maintenance</h5>
+      </div>
+      <div class="card-body">
+        <form method="get">
+          <div class="row g-3">
+            {% if selected_asset %}
+            <input type="hidden" name="asset" value="{{ selected_asset.pk }}">
+            {% endif %}
+            <div class="col-md-6">
+              <label class="form-label" for="id_search">Search</label>
+              <input
+                type="text"
+                name="search"
+                id="id_search"
+                value="{{ search }}"
+                class="form-control"
+                placeholder="Search by asset, issue, technician, or notes">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="id_status">Status</label>
+              <select name="status" id="id_status" class="form-select">
+                <option value="" {% if not status %}selected{% endif %}>All statuses</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="id_maintenance_type">Type</label>
+              <select name="maintenance_type" id="id_maintenance_type" class="form-select">
+                <option value="" {% if not maintenance_type %}selected{% endif %}>All types</option>
+                {% for value, label in maintenance_type_choices %}
+                <option value="{{ value }}" {% if maintenance_type == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 d-flex gap-2">
+              <button type="submit" class="btn btn-primary">Apply Filters</button>
+              <a
+                href="{% if selected_asset %}{% url 'assets:maintenance_list' %}?asset={{ selected_asset.pk }}{% else %}{% url 'assets:maintenance_list' %}{% endif %}"
+                class="btn btn-outline-secondary">
+                Reset
+              </a>
+              {% if selected_asset %}
+              <a href="{% url 'assets:maintenance_list' %}" class="btn btn-outline-secondary">Clear Asset Filter</a>
+              {% endif %}
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Maintenance Register</h5>
+        <span class="text-muted">{{ page_obj.paginator.count }} record{{ page_obj.paginator.count|pluralize }}</span>
+      </div>
+      <div class="card-body table-border-style">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead>
+              <tr>
+                <th>Asset</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Technician</th>
+                <th>Cost</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for record in page_obj %}
+              <tr>
+                <td>
+                  <strong>{{ record.asset.asset_tag }}</strong><br>
+                  <span class="text-muted">{{ record.asset.name }}</span>
+                </td>
+                <td>{{ record.get_maintenance_type_display }}</td>
+                <td>
+                  {% if record.status == "open" %}
+                  <span class="badge bg-warning text-dark">Open</span>
+                  {% elif record.status == "in_progress" %}
+                  <span class="badge bg-primary">In Progress</span>
+                  {% else %}
+                  <span class="badge bg-success">Completed</span>
+                  {% endif %}
+                </td>
+                <td>{{ record.start_date }}</td>
+                <td>{{ record.end_date|default:"-" }}</td>
+                <td>{{ record.technician|default:"-" }}</td>
+                <td>
+                  {% if record.cost or record.cost == 0 %}
+                  {{ record.cost|floatformat:2 }}
+                  {% else %}
+                  -
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  <a href="{% url 'assets:maintenance_detail' record.pk %}" class="btn btn-sm btn-outline-primary">View</a>
+                  {% if request.user.is_admin or request.user.is_technician %}
+                  <a href="{% url 'assets:maintenance_update' record.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                  <a href="{% url 'assets:maintenance_delete' record.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="8" class="text-center text-muted py-4">No maintenance records found.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% with filter_params=filter_querystring.urlencode %}
+        {% if page_obj.paginator.num_pages > 1 %}
+        <nav class="mt-3" aria-label="Maintenance pagination">
+          <ul class="pagination mb-0">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?{% if filter_params %}{{ filter_params }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">Previous</span></li>
+            {% endif %}
+
+            <li class="page-item active">
+              <span class="page-link">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            </li>
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?{% if filter_params %}{{ filter_params }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">Next</span></li>
+            {% endif %}
+          </ul>
+        </nav>
+        {% endif %}
+        {% endwith %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

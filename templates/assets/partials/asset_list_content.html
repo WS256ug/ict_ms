@@ -1,0 +1,42 @@
+<div class="row g-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">Filter Assets</h5>
+      </div>
+      <div class="card-body">
+        <form
+          id="asset-filter-form"
+          method="get"
+          hx-get="{% url 'assets:asset_list' %}"
+          hx-target="#asset-list-shell"
+          hx-push-url="true"
+          hx-trigger="change, submit">
+          <div class="row g-3">
+            <div class="col-md-4">{{ filter_form.search.label_tag }}{{ filter_form.search }}</div>
+            <div class="col-md-4">{{ filter_form.category.label_tag }}{{ filter_form.category }}</div>
+            <div class="col-md-4">{{ filter_form.asset_type.label_tag }}{{ filter_form.asset_type }}</div>
+            <div class="col-md-4">{{ filter_form.department.label_tag }}{{ filter_form.department }}</div>
+            <div class="col-md-4">{{ filter_form.status.label_tag }}{{ filter_form.status }}</div>
+            <div class="col-md-4">{{ filter_form.is_active.label_tag }}{{ filter_form.is_active }}</div>
+            <div class="col-12 d-flex gap-2">
+              <button type="submit" class="btn btn-primary">Apply Filters</button>
+              <a
+                href="{% url 'assets:asset_list' %}"
+                class="btn btn-outline-secondary"
+                hx-get="{% url 'assets:asset_list' %}"
+                hx-target="#asset-list-shell"
+                hx-push-url="true">
+                Reset
+              </a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    {% include "assets/partials/asset_list_results.html" %}
+  </div>
+</div>

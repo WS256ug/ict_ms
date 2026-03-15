@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-12">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <div>
+        <h4 class="mb-1">{{ managed_user.get_full_name }}</h4>
+        <p class="text-muted mb-0">{{ managed_user.email }}</p>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{% url 'accounts:user_list' %}" class="btn btn-outline-secondary">All Users</a>
+        <a href="{% url 'accounts:user_update' managed_user.pk %}" class="btn btn-primary">Edit User</a>
+        {% if managed_user.pk != request.user.pk %}
+        <a href="{% url 'accounts:user_delete' managed_user.pk %}" class="btn btn-outline-danger">Delete</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if messages %}
+  <div class="col-12">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="col-lg-4">
+    <div class="border rounded-3 bg-white p-4 h-100">
+      <p class="text-muted text-uppercase small mb-1">Role</p>
+      <h5 class="mb-3">{{ managed_user.get_role_display }}</h5>
+      <p class="text-muted text-uppercase small mb-1">Status</p>
+      <p class="mb-3">
+        {% if managed_user.is_active %}
+        <span class="badge bg-success">Active</span>
+        {% else %}
+        <span class="badge bg-secondary">Inactive</span>
+        {% endif %}
+      </p>
+      <p class="text-muted text-uppercase small mb-1">Department</p>
+      <p class="mb-0">{{ managed_user.department|default:"-" }}</p>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="border rounded-3 bg-white p-4 h-100">
+      <h5 class="mb-3">Account Details</h5>
+      <dl class="row mb-0">
+        <dt class="col-sm-4">First Name</dt>
+        <dd class="col-sm-8">{{ managed_user.first_name }}</dd>
+
+        <dt class="col-sm-4">Last Name</dt>
+        <dd class="col-sm-8">{{ managed_user.last_name }}</dd>
+
+        <dt class="col-sm-4">Email</dt>
+        <dd class="col-sm-8">{{ managed_user.email }}</dd>
+
+        <dt class="col-sm-4">Phone</dt>
+        <dd class="col-sm-8">{{ managed_user.phone_number|default:"-" }}</dd>
+
+        <dt class="col-sm-4">Date Joined</dt>
+        <dd class="col-sm-8">{{ managed_user.date_joined|date:"Y-m-d H:i" }}</dd>
+
+        <dt class="col-sm-4">Last Login</dt>
+        <dd class="col-sm-8">{{ managed_user.last_login|date:"Y-m-d H:i"|default:"-" }}</dd>
+
+        <dt class="col-sm-4">Staff Access</dt>
+        <dd class="col-sm-8">
+          {% if managed_user.is_staff %}Yes{% else %}No{% endif %}
+        </dd>
+
+        <dt class="col-sm-4">Superuser</dt>
+        <dd class="col-sm-8">
+          {% if managed_user.is_superuser %}Yes{% else %}No{% endif %}
+        </dd>
+      </dl>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="border border-danger rounded-3 bg-white p-4">
+      <h5 class="text-danger mb-3">Delete User</h5>
+      <p class="mb-3">
+        You are about to delete <strong>{{ managed_user.get_full_name }}</strong> ({{ managed_user.email }}).
+      </p>
+      <p class="text-muted">
+        This action cannot be undone and will remove the account from the system.
+      </p>
+
+      <dl class="row mb-4">
+        <dt class="col-4">Role</dt>
+        <dd class="col-8">{{ managed_user.get_role_display }}</dd>
+        <dt class="col-4">Department</dt>
+        <dd class="col-8">{{ managed_user.department|default:"-" }}</dd>
+        <dt class="col-4">Status</dt>
+        <dd class="col-8">{% if managed_user.is_active %}Active{% else %}Inactive{% endif %}</dd>
+      </dl>
+
+      <form method="post" class="d-flex gap-2">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Yes, Delete User</button>
+        <a href="{% url 'accounts:user_detail' managed_user.pk %}" class="btn btn-outline-secondary">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

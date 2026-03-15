@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-12">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <div>
+        <h4 class="mb-1">Depreciation Report</h4>
+        <p class="text-muted mb-0">Book value, useful life, and accumulated depreciation for tracked assets.</p>
+      </div>
+      {% include "reports/partials/export_actions.html" %}
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Records</p>
+      <h4 class="mb-0">{{ stats.total }}</h4>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Purchase Cost</p>
+      <h4 class="mb-0">{{ stats.purchase_cost|floatformat:2 }}</h4>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Accumulated</p>
+      <h4 class="mb-0">{{ stats.accumulated|floatformat:2 }}</h4>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Current Value</p>
+      <h4 class="mb-0">{{ stats.current_value|floatformat:2 }}</h4>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="border rounded-3 bg-white p-4">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Department</th>
+              <th>Purchase Cost</th>
+              <th>Salvage Value</th>
+              <th>Useful Life</th>
+              <th>Annual Depreciation</th>
+              <th>Accumulated</th>
+              <th>Current Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for record in records %}
+            <tr>
+              <td>
+                <strong>{{ record.asset.asset_tag }}</strong><br>
+                <span class="text-muted">{{ record.asset.name }}</span>
+              </td>
+              <td>{{ record.asset.department.name|default:"-" }}</td>
+              <td>{{ record.purchase_cost|floatformat:2 }}</td>
+              <td>{{ record.salvage_value|floatformat:2 }}</td>
+              <td>{{ record.useful_life_years }} years</td>
+              <td>{{ record.annual_depreciation|floatformat:2 }}</td>
+              <td>{{ record.accumulated_depreciation|floatformat:2 }}</td>
+              <td>{{ record.current_value|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8" class="text-center text-muted py-4">No depreciation records found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

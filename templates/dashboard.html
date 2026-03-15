@@ -1,0 +1,794 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+  .dashboard-note {
+    color: #64748b;
+  }
+
+  .dashboard-soft-card {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+  }
+
+  .dashboard-soft-card .card-header {
+    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    background: transparent;
+  }
+
+  .dashboard-summary-card {
+    overflow: hidden;
+    border: 0;
+    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.1);
+  }
+
+  .dashboard-summary-card .summary-meta {
+    color: rgba(255, 255, 255, 0.78);
+  }
+
+  .dashboard-summary-card .summary-chart {
+    min-width: 80px;
+  }
+
+  .dashboard-mini-metric {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 1rem;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  }
+
+  .dashboard-map-stat {
+    border-radius: 1rem;
+    padding: 1rem;
+    text-align: center;
+    background: #f8fafc;
+  }
+
+  .dashboard-progress {
+    height: 6px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    overflow: hidden;
+  }
+
+  .dashboard-progress span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+  }
+
+  .dashboard-table th {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    border-bottom-color: rgba(15, 23, 42, 0.08);
+  }
+
+  .dashboard-table td {
+    vertical-align: middle;
+    border-bottom-color: rgba(15, 23, 42, 0.06);
+  }
+
+  .dashboard-list-item + .dashboard-list-item {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+  }
+
+  .dashboard-empty {
+    border: 1px dashed rgba(100, 116, 139, 0.35);
+    border-radius: 1rem;
+    background: #f8fafc;
+    color: #64748b;
+  }
+
+  .dashboard-department-item + .dashboard-department-item {
+    margin-top: 0.9rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+  }
+
+  .dashboard-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(70, 128, 255, 0.08);
+    color: #335eea;
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+
+  .bg-dashboard-primary {
+    background: linear-gradient(135deg, #356dff 0%, #5b8cff 100%);
+  }
+
+  .bg-dashboard-success {
+    background: linear-gradient(135deg, #13a36f 0%, #2ed8b6 100%);
+  }
+
+  .bg-dashboard-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #ffcd64 100%);
+  }
+
+  .bg-dashboard-info {
+    background: linear-gradient(135deg, #04a9f5 0%, #37d5ff 100%);
+  }
+
+  .bar-green {
+    background: linear-gradient(90deg, #16a34a, #4ade80);
+  }
+
+  .bar-blue {
+    background: linear-gradient(90deg, #2563eb, #60a5fa);
+  }
+
+  .bar-amber {
+    background: linear-gradient(90deg, #d97706, #fbbf24);
+  }
+
+  .bar-purple {
+    background: linear-gradient(90deg, #7c3aed, #a78bfa);
+  }
+
+  .bar-red {
+    background: linear-gradient(90deg, #dc2626, #f87171);
+  }
+</style>
+
+<div class="page-header">
+  <div class="page-block">
+    <div class="row align-items-center">
+      <div class="col-md-12">
+        <div class="page-header-title">
+          <h5 class="mb-0">ICT Operations Dashboard</h5>
+        </div>
+      </div>
+      <div class="col-md-8">
+        <ul class="breadcrumb mb-0">
+          <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Home</a></li>
+          <li class="breadcrumb-item"><a href="javascript:void(0)">Dashboard</a></li>
+          <li class="breadcrumb-item" aria-current="page">Analytics</li>
+        </ul>
+      </div>
+      <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <span class="dashboard-chip">
+          <i class="ph ph-calendar-blank"></i>
+          {{ page_date|date:"l, F j, Y" }}
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  {% for card in summary_cards %}
+  <div class="col-md-6 col-xl-3">
+    <div class="card dashboard-summary-card text-white {% if forloop.counter == 1 %}bg-dashboard-primary{% elif forloop.counter == 2 %}bg-dashboard-success{% elif forloop.counter == 3 %}bg-dashboard-warning{% else %}bg-dashboard-info{% endif %}">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="flex-grow-1">
+            <h6 class="mb-2 text-white">{{ card.label }}</h6>
+            <h3 class="text-white mb-1 fw-light">{{ card.value }}</h3>
+            <p class="summary-meta mb-0">{{ card.detail }}</p>
+          </div>
+          <div class="flex-shrink-0 summary-chart">
+            <div
+              id="{% if forloop.counter == 1 %}total-revenue-chart{% elif forloop.counter == 2 %}active-users-chart{% elif forloop.counter == 3 %}orders-chart{% else %}conversion-chart{% endif %}"
+              style="height: 50px; width: 80px;"
+            ></div>
+          </div>
+        </div>
+      </div>
+      <div class="px-4 pb-3 summary-meta small">
+        {{ card.footer }}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="col-xl-8">
+    <div class="card dashboard-soft-card">
+      <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div>
+          <h5 class="mb-1">Operations Analytics</h5>
+          <p class="dashboard-note mb-0">
+            {{ user_name }}, here is the live picture across tickets, assignments, and maintenance activity.
+          </p>
+        </div>
+        <div class="btn-group" role="group">
+          <a href="{% url 'assets:asset_list' %}" class="btn btn-outline-primary btn-sm">Assets</a>
+          <a href="{% url 'assets:assignment_list' %}" class="btn btn-primary btn-sm">Assignments</a>
+          <a href="{% url 'reports:index' %}" class="btn btn-outline-primary btn-sm">Reports</a>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3 g-3">
+          <div class="col-md-6">
+            <div class="d-flex align-items-center">
+              <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                <i class="ph ph-activity text-white f-18"></i>
+              </div>
+              <div>
+                <h6 class="mb-0">{{ command_metrics.0.label }}</h6>
+                <h4 class="mb-0 fw-light">{{ command_metrics.0.value }}</h4>
+                <span class="dashboard-note small">{{ command_metrics.0.note }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="d-flex align-items-center">
+              <div class="bg-success rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                <i class="ph ph-shield-check text-white f-18"></i>
+              </div>
+              <div>
+                <h6 class="mb-0">{{ command_metrics.1.label }}</h6>
+                <h4 class="mb-0 fw-light">{{ command_metrics.1.value }}</h4>
+                <span class="dashboard-note small">{{ command_metrics.1.note }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="real-time-chart" style="height: 350px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="card dashboard-soft-card h-100">
+      <div class="card-header">
+        <h5 class="mb-1">Asset Status Analytics</h5>
+        <p class="dashboard-note mb-0">A quick distribution of the current asset base.</p>
+      </div>
+      <div class="card-body">
+        <div id="device-chart" style="height: 200px;"></div>
+        <div class="row mt-3">
+          {% for row in asset_status_rows|slice:":5" %}
+          <div class="col-12 {% if not forloop.first %}pt-3 border-top{% endif %}">
+            <div class="d-flex align-items-center justify-content-between">
+              <span class="d-flex align-items-center">
+                <i class="ph ph-circle-half text-{% if row.tone == 'green' %}success{% elif row.tone == 'blue' %}primary{% elif row.tone == 'amber' %}warning{% elif row.tone == 'purple' %}secondary{% else %}danger{% endif %} me-2 f-18"></i>
+                {{ row.label }}
+              </span>
+              <span class="fw-bold">{{ row.percent }}%</span>
+            </div>
+            <div class="dashboard-progress mt-2">
+              <span class="bar-{% if row.tone == 'green' %}green{% elif row.tone == 'blue' %}blue{% elif row.tone == 'amber' %}amber{% elif row.tone == 'purple' %}purple{% else %}red{% endif %}" style="width: {{ row.percent }}%"></span>
+            </div>
+            <div class="dashboard-note small mt-1">{{ row.count }} asset{{ row.count|pluralize }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-8">
+    <div class="card dashboard-soft-card">
+      <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div>
+          <h5 class="mb-1">Operational Coverage</h5>
+          <p class="dashboard-note mb-0">A broad visual snapshot of inventory, people, and record coverage in ICTMS.</p>
+        </div>
+        <div class="dashboard-note small">Updated for {{ page_year }}</div>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3 g-3">
+          {% for metric in operations_snapshot %}
+          <div class="col-6 col-lg-3">
+            <div class="dashboard-map-stat h-100">
+              <h4 class="mb-1 {% if forloop.counter == 1 %}text-primary{% elif forloop.counter == 2 %}text-success{% elif forloop.counter == 3 %}text-warning{% else %}text-info{% endif %}">{{ metric.value }}</h4>
+              <span class="fw-semibold d-block">{{ metric.label }}</span>
+              <span class="dashboard-note small">{{ metric.note }}</span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div id="world-low" style="height: 350px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="card dashboard-soft-card mb-3">
+      <div class="card-header">
+        <h5 class="mb-1">Queue Health</h5>
+        <p class="dashboard-note mb-0">Positive capacity versus work that needs escalation.</p>
+      </div>
+      <div class="card-body">
+        <div class="row text-center">
+          <div class="col-6">
+            <h6 class="text-danger mb-3">ATTENTION</h6>
+            <div id="sadball" style="height: 80px;"></div>
+            <h4 class="mt-2 text-danger">{{ command_metrics.2.value }}</h4>
+            <span class="dashboard-note small">Overdue actions</span>
+          </div>
+          <div class="col-6">
+            <h6 class="text-success mb-3">READY</h6>
+            <div id="happyball" style="height: 80px;"></div>
+            <h4 class="mt-2 text-success">{{ asset_status_rows.0.count }}</h4>
+            <span class="dashboard-note small">Available assets</span>
+          </div>
+        </div>
+        <a href="{% url 'reports:index' %}" class="btn btn-primary btn-sm w-100 mt-3">Open Reports Center</a>
+      </div>
+    </div>
+
+    <div class="card dashboard-soft-card">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h6 class="mb-0">Workload Pulse</h6>
+          <span class="badge bg-success">Live</span>
+        </div>
+        <div class="row">
+          <div class="col-6">
+            <div class="text-center">
+              <div id="cpu-usage" style="height: 60px; width: 60px; margin: 0 auto;"></div>
+              <h6 class="mt-2 mb-0">Maintenance</h6>
+              <span class="dashboard-note">{{ maintenance_queue|length }} pending</span>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="text-center">
+              <div id="memory-usage" style="height: 60px; width: 60px; margin: 0 auto;"></div>
+              <h6 class="mt-2 mb-0">Assignments</h6>
+              <span class="dashboard-note">{{ recent_assignments|length }} recent</span>
+            </div>
+          </div>
+        </div>
+        <div class="dashboard-list-item mt-3 pt-0 border-0">
+          <div class="fw-semibold">{{ command_metrics.0.label }}</div>
+          <div class="dashboard-note small">{{ command_metrics.0.note }}</div>
+        </div>
+        <div class="dashboard-list-item">
+          <div class="fw-semibold">{{ command_metrics.1.label }}</div>
+          <div class="dashboard-note small">{{ command_metrics.1.note }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-8">
+    <div class="card dashboard-soft-card">
+      <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div>
+          <h5 class="mb-1">Recent Fault Tickets</h5>
+          <p class="dashboard-note mb-0">Latest incidents captured by the service desk.</p>
+        </div>
+        <div class="btn-group" role="group">
+          <a href="{% url 'dashboard' %}" class="btn btn-outline-primary btn-sm">Refresh</a>
+          <a href="{% url 'reports:maintenance_report' %}" class="btn btn-primary btn-sm">Maintenance Report</a>
+        </div>
+      </div>
+      <div class="card-body">
+        {% if recent_tickets %}
+        <div class="table-responsive">
+          <table class="table table-hover dashboard-table mb-0">
+            <thead>
+              <tr>
+                <th>Ticket</th>
+                <th>Department</th>
+                <th>Asset</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Age</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ticket in recent_tickets %}
+              <tr>
+                <td>
+                  <div class="fw-semibold">{{ ticket.ticket_id }}</div>
+                  <span class="dashboard-note small">{{ ticket.title }}</span>
+                </td>
+                <td>
+                  <div>{{ ticket.department.name }}</div>
+                  {% if ticket.reported_by %}
+                  <span class="dashboard-note small">{{ ticket.reported_by.get_full_name|default:ticket.reported_by.email }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if ticket.asset %}
+                  <div>{{ ticket.asset.asset_tag }}</div>
+                  <span class="dashboard-note small">{{ ticket.asset.name }}</span>
+                  {% else %}
+                  <span class="dashboard-note">Not linked</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if ticket.priority == "CRITICAL" %}
+                  <span class="badge bg-danger">{{ ticket.get_priority_display }}</span>
+                  {% elif ticket.priority == "HIGH" %}
+                  <span class="badge bg-warning text-dark">{{ ticket.get_priority_display }}</span>
+                  {% elif ticket.priority == "MEDIUM" %}
+                  <span class="badge bg-info">{{ ticket.get_priority_display }}</span>
+                  {% else %}
+                  <span class="badge bg-success">{{ ticket.get_priority_display }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="badge bg-secondary-subtle text-secondary">{{ ticket.get_status_display }}</span>
+                </td>
+                <td>
+                  <div>{{ ticket.created_at|date:"M j, Y" }}</div>
+                  <span class="dashboard-note small">{{ ticket.age_hours }}h ago</span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="dashboard-empty p-4 text-center">
+          No recent fault tickets are available yet.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="card dashboard-soft-card h-100">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h5 class="mb-0">Live Activity Feed</h5>
+        <div class="d-flex align-items-center">
+          <div class="bg-success rounded-circle me-2" style="width: 8px; height: 8px;"></div>
+          <span class="dashboard-note f-12">Live</span>
+        </div>
+      </div>
+      <div class="card-body">
+        {% if recent_maintenance %}
+        <div class="timeline">
+          {% for log in recent_maintenance %}
+          <div class="timeline-item">
+            <div class="timeline-marker {% if log.status == 'COMPLETED' %}bg-success{% elif log.status == 'IN_PROGRESS' %}bg-warning{% else %}bg-primary{% endif %}"></div>
+            <div class="timeline-content">
+              <h6 class="mb-1">{{ log.asset.asset_tag }} · {{ log.asset.name }}</h6>
+              <p class="mb-1 text-muted f-12">{{ log.get_maintenance_type_display }}{% if log.performed_by %} by {{ log.performed_by.get_full_name|default:log.performed_by.email }}{% endif %}</p>
+              <span class="text-muted f-10">{{ log.performed_at|date:"M j, Y H:i" }}</span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <a href="{% url 'assets:maintenance_list' %}" class="btn btn-outline-primary btn-sm w-100 mt-3">View Maintenance Log</a>
+        {% else %}
+        <div class="dashboard-empty p-4 text-center">
+          Maintenance activity will appear here once logs are recorded.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-6">
+    <div class="card dashboard-soft-card h-100">
+      <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div>
+          <h5 class="mb-1">Active Assignments</h5>
+          <p class="dashboard-note mb-0">Assets currently issued to staff, departments, or visitors.</p>
+        </div>
+        <a href="{% url 'assets:assignment_list' %}" class="btn btn-outline-secondary btn-sm">View All</a>
+      </div>
+      <div class="card-body">
+        {% if recent_assignments %}
+        <div class="table-responsive">
+          <table class="table dashboard-table mb-0">
+            <thead>
+              <tr>
+                <th>Asset</th>
+                <th>Assigned To</th>
+                <th>Issued</th>
+                <th>Return</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for assignment in recent_assignments|slice:":6" %}
+              <tr>
+                <td>
+                  <div class="fw-semibold">{{ assignment.asset.asset_tag }}</div>
+                  <span class="dashboard-note small">{{ assignment.asset.name }}</span>
+                </td>
+                <td>
+                  <div>{{ assignment.assignee_display }}</div>
+                  {% if assignment.assignee_contact %}
+                  <span class="dashboard-note small">{{ assignment.assignee_contact }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div>{{ assignment.assigned_date|date:"M j, Y" }}</div>
+                  {% if assignment.purpose %}
+                  <span class="dashboard-note small">{{ assignment.purpose }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if assignment.expected_return %}
+                  <div>{{ assignment.expected_return|date:"M j, Y" }}</div>
+                  {% else %}
+                  <div>Open-ended</div>
+                  {% endif %}
+                  {% if assignment.return_badge_tone == "danger" %}
+                  <span class="badge bg-danger-subtle text-danger">{{ assignment.return_badge }}</span>
+                  {% elif assignment.return_badge_tone == "warning" %}
+                  <span class="badge bg-warning-subtle text-warning-emphasis">{{ assignment.return_badge }}</span>
+                  {% else %}
+                  <span class="badge bg-info-subtle text-info-emphasis">{{ assignment.return_badge }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="dashboard-empty p-4 text-center">
+          There are no active assignments to review.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-6">
+    <div class="card dashboard-soft-card h-100">
+      <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div>
+          <h5 class="mb-1">Operational Readiness</h5>
+          <p class="dashboard-note mb-0">Department coverage, progress balance, and latest audit visibility.</p>
+        </div>
+        <a href="{% url 'reports:audit_report' %}" class="btn btn-outline-secondary btn-sm">Audit Report</a>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6 col-xl-3">
+            <div class="card border h-100 mb-0">
+              <div class="card-body text-center">
+                <div id="sales-performance" style="height: 120px;"></div>
+                <h6 class="mt-3 mb-1">Available Assets</h6>
+                <h4 class="mb-0 text-primary">{{ asset_status_rows.0.percent }}%</h4>
+                <span class="text-muted f-12">{{ asset_status_rows.0.count }} ready for use</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 col-xl-3">
+            <div class="card border h-100 mb-0">
+              <div class="card-body text-center">
+                <div id="customer-satisfaction" style="height: 120px;"></div>
+                <h6 class="mt-3 mb-1">Assigned Assets</h6>
+                <h4 class="mb-0 text-success">{{ asset_status_rows.1.percent }}%</h4>
+                <span class="text-muted f-12">{{ asset_status_rows.1.count }} currently issued</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 col-xl-3">
+            <div class="card border h-100 mb-0">
+              <div class="card-body text-center">
+                <div id="system-uptime" style="height: 120px;"></div>
+                <h6 class="mt-3 mb-1">Warranty Watch</h6>
+                <h4 class="mb-0 text-warning">{{ command_metrics.1.value }}</h4>
+                <span class="text-muted f-12">Assets expiring soon</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 col-xl-3">
+            <div class="card border h-100 mb-0">
+              <div class="card-body text-center">
+                <div id="api-response" style="height: 120px;"></div>
+                <h6 class="mt-3 mb-1">Overdue Actions</h6>
+                <h4 class="mb-0 text-info">{{ command_metrics.2.value }}</h4>
+                <span class="text-muted f-12">Returns and tickets needing follow-up</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row mt-4 g-4">
+          <div class="col-lg-7">
+            <h6 class="mb-3">Department Coverage</h6>
+            {% if department_cards %}
+            <div class="list-group list-group-flush">
+              {% for department in department_cards %}
+              <div class="list-group-item px-0 dashboard-department-item">
+                <div class="d-flex justify-content-between align-items-center gap-3">
+                  <div>
+                    <div class="fw-semibold">{{ department.name }}</div>
+                    <span class="dashboard-note small">{{ department.code }}</span>
+                  </div>
+                  <div class="text-end">
+                    <div class="fw-bold">{{ department.asset_total }} assets</div>
+                    <small class="{% if department.ticket_total > 0 %}text-warning{% else %}text-success{% endif %}">
+                      {{ department.ticket_total }} tickets · {{ department.user_total }} users
+                    </small>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="dashboard-empty p-4 text-center">
+              Department analytics will appear once departments are populated.
+            </div>
+            {% endif %}
+          </div>
+          <div class="col-lg-5">
+            <h6 class="mb-3">Goal Progress</h6>
+            {% for row in asset_status_rows|slice:":4" %}
+            <div class="mb-3">
+              <div class="d-flex justify-content-between mb-1">
+                <span class="f-14">{{ row.label }}</span>
+                <span class="f-14 fw-bold">{{ row.percent }}%</span>
+              </div>
+              <div class="dashboard-progress">
+                <span class="bar-{% if row.tone == 'green' %}green{% elif row.tone == 'blue' %}blue{% elif row.tone == 'amber' %}amber{% elif row.tone == 'purple' %}purple{% else %}red{% endif %}" style="width: {{ row.percent }}%"></span>
+              </div>
+            </div>
+            {% endfor %}
+
+            <div class="mt-4">
+              <h6 class="mb-3">Latest Audit Snapshot</h6>
+              {% if latest_audit_snapshot %}
+              <div class="dashboard-mini-metric p-3">
+                <div class="fw-semibold mb-1">{{ latest_audit_snapshot.audit.audit_date|date:"F j, Y" }}</div>
+                <div class="dashboard-note small mb-3">
+                  {{ latest_audit_snapshot.total_items }} item{{ latest_audit_snapshot.total_items|pluralize }} reviewed in the latest audit cycle.
+                </div>
+                <div class="row g-2 text-center">
+                  <div class="col-6">
+                    <div class="border rounded-3 p-2">
+                      <div class="text-muted small">Found</div>
+                      <div class="h5 mb-0">{{ latest_audit_snapshot.found }}</div>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="border rounded-3 p-2">
+                      <div class="text-muted small">Missing</div>
+                      <div class="h5 mb-0">{{ latest_audit_snapshot.missing }}</div>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="border rounded-3 p-2">
+                      <div class="text-muted small">Damaged</div>
+                      <div class="h5 mb-0">{{ latest_audit_snapshot.damaged }}</div>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="border rounded-3 p-2">
+                      <div class="text-muted small">Relocated</div>
+                      <div class="h5 mb-0">{{ latest_audit_snapshot.relocated }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% else %}
+              <div class="dashboard-empty p-4 text-center">
+                No audit records have been logged yet.
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-8">
+    <div class="card dashboard-soft-card h-100">
+      <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div>
+          <h5 class="mb-1">Maintenance Queue</h5>
+          <p class="dashboard-note mb-0">Upcoming and overdue maintenance schedules waiting for action.</p>
+        </div>
+        <a href="{% url 'assets:maintenance_list' %}" class="btn btn-outline-secondary btn-sm">Manage Queue</a>
+      </div>
+      <div class="card-body">
+        {% if maintenance_queue %}
+        <div class="table-responsive">
+          <table class="table dashboard-table mb-0">
+            <thead>
+              <tr>
+                <th>Task</th>
+                <th>Asset</th>
+                <th>Scheduled</th>
+                <th>Technician</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in maintenance_queue %}
+              <tr>
+                <td>
+                  <div class="fw-semibold">{{ item.title }}</div>
+                  {% if item.description %}
+                  <span class="dashboard-note small">{{ item.description|truncatechars:50 }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div>{{ item.asset.asset_tag }}</div>
+                  <span class="dashboard-note small">{{ item.asset.name }}</span>
+                </td>
+                <td>
+                  {% if item.scheduled_date %}
+                  <div>{{ item.scheduled_date|date:"M j, Y" }}</div>
+                  {% if item.is_overdue %}
+                  <span class="badge bg-danger-subtle text-danger">Overdue</span>
+                  {% elif item.days_until == 0 %}
+                  <span class="badge bg-warning-subtle text-warning-emphasis">Due today</span>
+                  {% else %}
+                  <span class="dashboard-note small">In {{ item.days_until }} day(s)</span>
+                  {% endif %}
+                  {% else %}
+                  <span class="dashboard-note">No date set</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if item.assigned_to %}
+                  {{ item.assigned_to.get_full_name|default:item.assigned_to.email }}
+                  {% else %}
+                  <span class="dashboard-note">Unassigned</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if item.is_overdue %}
+                  <span class="badge bg-danger">Overdue</span>
+                  {% elif item.days_until == 0 %}
+                  <span class="badge bg-warning text-dark">Today</span>
+                  {% else %}
+                  <span class="badge bg-info">Planned</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="dashboard-empty p-4 text-center">
+          No maintenance schedules are currently pending.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="card dashboard-soft-card h-100">
+      <div class="card-header">
+        <h5 class="mb-1">Warranty Watch</h5>
+        <p class="dashboard-note mb-0">Assets whose warranty is ending in the next 30 days.</p>
+      </div>
+      <div class="card-body">
+        {% if warranty_alerts %}
+        {% for asset in warranty_alerts %}
+        <div class="dashboard-list-item {% if forloop.first %}pt-0 mt-0 border-0{% endif %}">
+          <div class="d-flex justify-content-between gap-3">
+            <div>
+              <div class="fw-semibold">{{ asset.asset_tag }}</div>
+              <div class="dashboard-note small">{{ asset.name }}</div>
+              <div class="dashboard-note small">
+                {% if asset.department %}{{ asset.department.name }}{% else %}No department{% endif %}
+              </div>
+            </div>
+            <div class="text-end">
+              <div class="fw-semibold">{{ asset.warranty_expiry|date:"M j, Y" }}</div>
+              <div class="small {% if asset.warranty_days_left <= 7 %}text-danger{% else %}text-warning{% endif %}">
+                {% if asset.warranty_days_left == 0 %}
+                Expires today
+                {% else %}
+                {{ asset.warranty_days_left }} day(s) left
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="dashboard-empty p-4 text-center">
+          No assets are approaching warranty expiry in the next 30 days.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
