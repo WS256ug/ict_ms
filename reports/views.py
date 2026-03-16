@@ -1,11 +1,11 @@
 import csv
 import io
 import textwrap
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, OuterRef, Q, Subquery
+from django.db.models import Count, Max, OuterRef, Q, Subquery
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -23,6 +23,8 @@ from assets.models import (
     MaintenanceRecord,
     Software,
 )
+from tickets.models import FaultTicket
+from tickets.permissions import ticket_queryset_for_user
 
 
 def _asset_inventory_queryset():
@@ -67,6 +69,24 @@ def _display_value(value):
     if isinstance(value, date):
         return value.isoformat()
     return str(value).replace("\r", " ").replace("\n", " ")
+
+
+def _format_duration(value):
+    if not value:
+        return "-"
+
+    total_seconds = int(value.total_seconds())
+    days, remainder = divmod(total_seconds, 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes = remainder // 60
+
+    parts = []
+    if days:
+        parts.append(f"{days}d")
+    if hours or days:
+        parts.append(f"{hours}h")
+    parts.append(f"{minutes}m")
+    return " ".join(parts)
 
 
 def _build_export_urls(request):
@@ -230,8 +250,18 @@ def _render_report(request, template_name, context, title, filename, columns, ro
 # Begin reports_index view
 @login_required
 def reports_index(request):
+    visible_tickets = ticket_queryset_for_user(request.user, FaultTicket.objects.all())
+    overdue_tickets = visible_tickets.filter(
+        status__in=FaultTicket.OPEN_STATUSES,
+        due_date__lt=timezone.now(),
+    ).count()
     context = {
         "report_cards": [
+            {
+                "title": "Ticket Report",
+                "description": "Help desk workload, SLA risk, technician performance, and faulty asset trends.",
+                "url_name": "reports:ticket_report",
+            },
             {
                 "title": "Asset Inventory",
                 "description": "Complete asset register with category, department, location, and status.",
@@ -274,6 +304,8 @@ def reports_index(request):
             },
         ],
         "stats": {
+            "tickets": visible_tickets.count(),
+            "overdue_tickets": overdue_tickets,
             "assets": Asset.objects.count(),
             "assigned": AssetAssignment.objects.filter(returned_date__isnull=True).count(),
             "maintenance": MaintenanceRecord.objects.exclude(
@@ -288,6 +320,274 @@ def reports_index(request):
 
 
 # End reports_index view
+
+
+# Begin ticket_report view
+@login_required
+def ticket_report(request):
+    now = timezone.now()
+    today = timezone.localdate()
+    resolved_statuses = [FaultTicket.STATUS_RESOLVED, FaultTicket.STATUS_CLOSED]
+    ticket_scope = ticket_queryset_for_user(request.user, FaultTicket.objects.all())
+
+    tickets = list(
+        ticket_scope.select_related(
+            "department",
+            "asset",
+            "location",
+            "reported_by",
+            "triaged_by",
+            "assigned_to",
+        ).order_by("-created_at", "-id")
+    )
+
+    open_tickets = [ticket for ticket in tickets if ticket.status in FaultTicket.OPEN_STATUSES]
+    overdue_tickets = [
+        ticket for ticket in open_tickets if ticket.due_date and ticket.due_date < now
+    ]
+    resolved_tickets = [ticket for ticket in tickets if ticket.resolution_time]
+    responded_tickets = [ticket for ticket in tickets if ticket.response_time]
+
+    average_resolution_time = None
+    if resolved_tickets:
+        average_resolution_time = sum(
+            (ticket.resolution_time for ticket in resolved_tickets),
+            timedelta(),
+        ) / len(resolved_tickets)
+
+    average_response_time = None
+    if responded_tickets:
+        average_response_time = sum(
+            (ticket.response_time for ticket in responded_tickets),
+            timedelta(),
+        ) / len(responded_tickets)
+
+    category_labels = dict(FaultTicket.CATEGORY_CHOICES)
+    category_data = (
+        ticket_scope.values("ticket_category")
+        .annotate(
+            total=Count("id"),
+            open_total=Count("id", filter=Q(status__in=FaultTicket.OPEN_STATUSES)),
+            overdue_total=Count(
+                "id",
+                filter=Q(status__in=FaultTicket.OPEN_STATUSES, due_date__lt=now),
+            ),
+            resolved_total=Count("id", filter=Q(status__in=resolved_statuses)),
+        )
+        .order_by("-total", "ticket_category")
+    )
+    category_rows = [
+        {
+            "label": category_labels.get(row["ticket_category"], row["ticket_category"]),
+            "total": row["total"],
+            "open_total": row["open_total"],
+            "overdue_total": row["overdue_total"],
+            "resolved_total": row["resolved_total"],
+        }
+        for row in category_data
+    ]
+
+    technician_rows = []
+    technician_data = (
+        ticket_scope.filter(assigned_to__isnull=False)
+        .values(
+            "assigned_to__first_name",
+            "assigned_to__last_name",
+            "assigned_to__email",
+        )
+        .annotate(
+            total=Count("id"),
+            open_total=Count("id", filter=Q(status__in=FaultTicket.OPEN_STATUSES)),
+            overdue_total=Count(
+                "id",
+                filter=Q(status__in=FaultTicket.OPEN_STATUSES, due_date__lt=now),
+            ),
+            resolved_total=Count("id", filter=Q(status__in=resolved_statuses)),
+        )
+        .order_by("-open_total", "-total", "assigned_to__email")
+    )
+    for row in technician_data:
+        full_name = " ".join(
+            part
+            for part in [row["assigned_to__first_name"], row["assigned_to__last_name"]]
+            if part
+        ).strip()
+        technician_rows.append(
+            {
+                "label": full_name or row["assigned_to__email"],
+                "email": row["assigned_to__email"],
+                "total": row["total"],
+                "open_total": row["open_total"],
+                "overdue_total": row["overdue_total"],
+                "resolved_total": row["resolved_total"],
+            }
+        )
+
+    department_rows = list(
+        Department.objects.annotate(
+            total=Count("tickets", filter=Q(tickets__in=ticket_scope), distinct=True),
+            open_total=Count(
+                "tickets",
+                filter=Q(
+                    tickets__in=ticket_scope,
+                    tickets__status__in=FaultTicket.OPEN_STATUSES,
+                ),
+                distinct=True,
+            ),
+            overdue_total=Count(
+                "tickets",
+                filter=Q(
+                    tickets__in=ticket_scope,
+                    tickets__status__in=FaultTicket.OPEN_STATUSES,
+                    tickets__due_date__lt=now,
+                ),
+                distinct=True,
+            ),
+            resolved_total=Count(
+                "tickets",
+                filter=Q(
+                    tickets__in=ticket_scope,
+                    tickets__status__in=resolved_statuses,
+                ),
+                distinct=True,
+            ),
+        )
+        .filter(total__gt=0)
+        .order_by("-open_total", "-total", "name")
+    )
+
+    faulty_asset_rows = list(
+        Asset.objects.filter(tickets__in=ticket_scope, tickets__is_asset_fault=True)
+        .select_related("department")
+        .annotate(
+            ticket_total=Count(
+                "tickets",
+                filter=Q(tickets__in=ticket_scope, tickets__is_asset_fault=True),
+                distinct=True,
+            ),
+            open_total=Count(
+                "tickets",
+                filter=Q(
+                    tickets__in=ticket_scope,
+                    tickets__is_asset_fault=True,
+                    tickets__status__in=FaultTicket.OPEN_STATUSES,
+                ),
+                distinct=True,
+            ),
+            last_ticket_at=Max("tickets__created_at"),
+        )
+        .order_by("-ticket_total", "-open_total", "asset_tag")[:10]
+    )
+
+    queue_rows = [
+        {
+            "label": "New Tickets",
+            "count": ticket_scope.filter(status=FaultTicket.STATUS_OPEN).count(),
+            "note": "Fresh tickets waiting for help desk triage.",
+        },
+        {
+            "label": "Unassigned Tickets",
+            "count": ticket_scope.filter(
+                status__in=[FaultTicket.STATUS_OPEN, FaultTicket.STATUS_TRIAGED],
+                assigned_to__isnull=True,
+            ).count(),
+            "note": "Tickets that still need an owner.",
+        },
+        {
+            "label": "Critical Tickets",
+            "count": ticket_scope.filter(
+                status__in=FaultTicket.OPEN_STATUSES,
+                priority=FaultTicket.PRIORITY_CRITICAL,
+            ).count(),
+            "note": "Highest urgency work still in the live queue.",
+        },
+        {
+            "label": "Resolved Today",
+            "count": ticket_scope.filter(resolved_at__date=today).count(),
+            "note": "Tickets resolved during the current day.",
+        },
+    ]
+
+    context = {
+        "tickets": tickets,
+        "queue_rows": queue_rows,
+        "category_rows": category_rows,
+        "technician_rows": technician_rows,
+        "department_rows": department_rows,
+        "faulty_asset_rows": faulty_asset_rows,
+        "stats": {
+            "total": len(tickets),
+            "open": len(open_tickets),
+            "overdue": len(overdue_tickets),
+            "critical": sum(
+                1
+                for ticket in open_tickets
+                if ticket.priority == FaultTicket.PRIORITY_CRITICAL
+            ),
+            "unassigned": sum(1 for ticket in open_tickets if not ticket.assigned_to_id),
+            "resolved_today": sum(
+                1 for ticket in tickets if ticket.resolved_at and ticket.resolved_at.date() == today
+            ),
+            "avg_resolution": _format_duration(average_resolution_time),
+            "avg_response": _format_duration(average_response_time),
+        },
+    }
+    export_rows = [
+        [
+            ticket.ticket_id,
+            ticket.title,
+            ticket.get_ticket_category_display(),
+            ticket.get_priority_display(),
+            ticket.get_status_display(),
+            ticket.department.name if ticket.department else "",
+            ticket.asset.asset_tag if ticket.asset else "",
+            (
+                ticket.assigned_to.get_full_name() or ticket.assigned_to.email
+                if ticket.assigned_to
+                else ""
+            ),
+            (
+                ticket.reported_by.get_full_name() or ticket.reported_by.email
+                if ticket.reported_by
+                else ""
+            ),
+            ticket.created_at,
+            ticket.due_date,
+            "Yes" if ticket.is_overdue else "No",
+            "Yes" if ticket.requires_maintenance else "No",
+            "Yes" if ticket.escalated else "No",
+            ticket.resolved_at,
+        ]
+        for ticket in tickets
+    ]
+    return _render_report(
+        request,
+        "reports/ticket_report.html",
+        context,
+        "Ticket Operations Report",
+        _report_filename("ticket-report"),
+        [
+            "Ticket ID",
+            "Title",
+            "Category",
+            "Priority",
+            "Status",
+            "Department",
+            "Asset",
+            "Assigned To",
+            "Reported By",
+            "Created",
+            "Due Date",
+            "Overdue",
+            "Requires Maintenance",
+            "Escalated",
+            "Resolved At",
+        ],
+        export_rows,
+    )
+
+
+# End ticket_report view
 
 
 # Begin asset_inventory_report view

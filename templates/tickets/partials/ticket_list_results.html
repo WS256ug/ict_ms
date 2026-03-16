@@ -1,0 +1,160 @@
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Ticket Queue</h5>
+    <span class="text-muted">{{ page_obj.paginator.count }} record{{ page_obj.paginator.count|pluralize }}</span>
+  </div>
+  <div class="card-body table-border-style">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th>Ticket</th>
+            <th>Category</th>
+            <th>Requester</th>
+            <th>Department</th>
+            <th>Assignee</th>
+            <th>Priority</th>
+            <th>Status</th>
+            <th>SLA</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ticket in page_obj %}
+          <tr>
+            <td>
+              <div class="fw-semibold">{{ ticket.ticket_id }}</div>
+              <div class="text-muted small">{{ ticket.title|truncatechars:50 }}</div>
+              {% if ticket.asset %}
+              <div class="text-muted small">{{ ticket.asset.asset_tag }}{% if ticket.location %} &middot; {{ ticket.location }}{% endif %}</div>
+              {% endif %}
+            </td>
+            <td>
+              <div>{{ ticket.get_ticket_category_display }}</div>
+              {% if ticket.is_asset_fault %}
+              <span class="badge bg-info-subtle text-info mt-1">Asset Fault</span>
+              {% endif %}
+              {% if ticket.requires_maintenance %}
+              <span class="badge bg-warning-subtle text-warning-emphasis mt-1">Needs Maintenance</span>
+              {% endif %}
+            </td>
+            <td>
+              <div>{{ ticket.reported_by.get_full_name|default:ticket.reported_by.email }}</div>
+              <div class="text-muted small">{{ ticket.get_impact_display }}</div>
+            </td>
+            <td>{{ ticket.department.name }}</td>
+            <td>
+              {% if ticket.assigned_to %}
+              {{ ticket.assigned_to.get_full_name|default:ticket.assigned_to.email }}
+              {% else %}
+              <span class="text-muted">Unassigned</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if ticket.priority == "CRITICAL" %}
+              <span class="badge bg-danger">{{ ticket.get_priority_display }}</span>
+              {% elif ticket.priority == "HIGH" %}
+              <span class="badge bg-warning text-dark">{{ ticket.get_priority_display }}</span>
+              {% elif ticket.priority == "MEDIUM" %}
+              <span class="badge bg-info">{{ ticket.get_priority_display }}</span>
+              {% else %}
+              <span class="badge bg-success">{{ ticket.get_priority_display }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if ticket.status == "OPEN" %}
+              <span class="badge bg-secondary-subtle text-secondary">Open</span>
+              {% elif ticket.status == "TRIAGED" %}
+              <span class="badge bg-primary-subtle text-primary">Triaged</span>
+              {% elif ticket.status == "ASSIGNED" %}
+              <span class="badge bg-primary">Assigned</span>
+              {% elif ticket.status == "IN_PROGRESS" %}
+              <span class="badge bg-warning-subtle text-warning-emphasis">In Progress</span>
+              {% elif ticket.status == "PENDING_USER" %}
+              <span class="badge bg-info-subtle text-info-emphasis">Pending User</span>
+              {% elif ticket.status == "PENDING_PARTS" %}
+              <span class="badge bg-warning text-dark">Pending Parts</span>
+              {% elif ticket.status == "RESOLVED" %}
+              <span class="badge bg-success-subtle text-success">Resolved</span>
+              {% elif ticket.status == "CLOSED" %}
+              <span class="badge bg-dark-subtle text-dark">Closed</span>
+              {% else %}
+              <span class="badge bg-danger-subtle text-danger">Cancelled</span>
+              {% endif %}
+              {% if ticket.escalated %}
+              <div class="text-danger small mt-1">Escalated</div>
+              {% endif %}
+            </td>
+            <td>
+              {% if ticket.due_date %}
+              <div>{{ ticket.due_date|date:"M j, Y H:i" }}</div>
+              <div class="small {% if ticket.is_overdue %}text-danger{% else %}text-muted{% endif %}">
+                {% if ticket.is_overdue %}
+                Overdue
+                {% else %}
+                {{ ticket.due_date|timeuntil }} left
+                {% endif %}
+              </div>
+              {% else %}
+              <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              <a href="{% url 'tickets:ticket_detail' ticket.pk %}" class="btn btn-sm btn-outline-primary">View</a>
+              {% if request.user.is_admin or request.user.is_help_desk or ticket.assigned_to_id == request.user.id or ticket.reported_by_id == request.user.id and ticket.status == "OPEN" %}
+              <a href="{% url 'tickets:ticket_update' ticket.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9" class="text-center text-muted py-4">No tickets matched the current queue and filters.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% with filter_params=filter_querystring.urlencode %}
+    {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="mt-3" aria-label="Ticket pagination">
+      <ul class="pagination mb-0">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a
+            class="page-link"
+            href="?{% if filter_params %}{{ filter_params }}&{% endif %}page={{ page_obj.previous_page_number }}"
+            hx-get="?{% if filter_params %}{{ filter_params }}&{% endif %}page={{ page_obj.previous_page_number }}"
+            hx-target="#ticket-list-shell"
+            hx-push-url="true">
+            Previous
+          </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">Previous</span></li>
+        {% endif %}
+
+        <li class="page-item active">
+          <span class="page-link">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        </li>
+
+        {% if page_obj.has_next %}
+        <li class="page-item">
+          <a
+            class="page-link"
+            href="?{% if filter_params %}{{ filter_params }}&{% endif %}page={{ page_obj.next_page_number }}"
+            hx-get="?{% if filter_params %}{{ filter_params }}&{% endif %}page={{ page_obj.next_page_number }}"
+            hx-target="#ticket-list-shell"
+            hx-push-url="true">
+            Next
+          </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">Next</span></li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+    {% endwith %}
+  </div>
+</div>

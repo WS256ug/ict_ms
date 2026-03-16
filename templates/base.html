@@ -104,6 +104,21 @@
         <li class="pc-item pc-hasmenu">
           <a href="#!" class="pc-link">
             <span class="pc-micon">
+              <i class="ph ph-ticket"></i>
+            </span>
+            <span class="pc-mtext" data-i18n="Tickets">Tickets</span>
+            <span class="pc-arrow"><i class="ti ti-chevron-right"></i></span>
+          </a>
+          <ul class="pc-submenu">
+            <li class="pc-item"><a class="pc-link" href="{% url 'tickets:ticket_list' %}">All Tickets</a></li>
+            {% if request.user.is_authenticated and not request.user.is_management %}
+            <li class="pc-item"><a class="pc-link" href="{% url 'tickets:ticket_create' %}">Report Issue</a></li>
+            {% endif %}
+          </ul>
+        </li>
+        <li class="pc-item pc-hasmenu">
+          <a href="#!" class="pc-link">
+            <span class="pc-micon">
               <i class="ph ph-chart-pie-slice"></i>
             </span>
             <span class="pc-mtext" data-i18n="Reports">Reports</span>
@@ -228,6 +243,10 @@
           <a href="{% url 'assets:assignment_list' %}" class="dropdown-item">
             <i class="ph ph-user-switch"></i>
             <span>Assignments</span>
+          </a>
+          <a href="{% url 'tickets:ticket_list' %}" class="dropdown-item">
+            <i class="ph ph-ticket"></i>
+            <span>Tickets</span>
           </a>
           <a href="{% url 'reports:index' %}" class="dropdown-item">
             <i class="ph ph-chart-bar"></i>

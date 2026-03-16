@@ -22,6 +22,7 @@ urlpatterns = [
     path('dashboard/', landing_page, name='dashboard'),
     path('users/', include('accounts.urls')),
     path('assets/', include('assets.urls')),
+    path('tickets/', include('tickets.urls')),
     path('reports/', include('reports.urls')),
 ]
 

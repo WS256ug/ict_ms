@@ -199,6 +199,7 @@
         </div>
         <div class="btn-group" role="group">
           <a href="{% url 'assets:asset_list' %}" class="btn btn-outline-primary btn-sm">Assets</a>
+          <a href="{% url 'tickets:ticket_list' %}" class="btn btn-outline-primary btn-sm">Tickets</a>
           <a href="{% url 'assets:assignment_list' %}" class="btn btn-primary btn-sm">Assignments</a>
           <a href="{% url 'reports:index' %}" class="btn btn-outline-primary btn-sm">Reports</a>
         </div>
@@ -353,11 +354,11 @@
     <div class="card dashboard-soft-card">
       <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
         <div>
-          <h5 class="mb-1">Recent Fault Tickets</h5>
+          <h5 class="mb-1">Recent Help Desk Tickets</h5>
           <p class="dashboard-note mb-0">Latest incidents captured by the service desk.</p>
         </div>
         <div class="btn-group" role="group">
-          <a href="{% url 'dashboard' %}" class="btn btn-outline-primary btn-sm">Refresh</a>
+          <a href="{% url 'tickets:ticket_list' %}" class="btn btn-outline-primary btn-sm">Open Tickets</a>
           <a href="{% url 'reports:maintenance_report' %}" class="btn btn-primary btn-sm">Maintenance Report</a>
         </div>
       </div>
@@ -379,7 +380,9 @@
               {% for ticket in recent_tickets %}
               <tr>
                 <td>
-                  <div class="fw-semibold">{{ ticket.ticket_id }}</div>
+                  <div class="fw-semibold">
+                    <a href="{% url 'tickets:ticket_detail' ticket.pk %}">{{ ticket.ticket_id }}</a>
+                  </div>
                   <span class="dashboard-note small">{{ ticket.title }}</span>
                 </td>
                 <td>
@@ -421,7 +424,7 @@
         </div>
         {% else %}
         <div class="dashboard-empty p-4 text-center">
-          No recent fault tickets are available yet.
+          No recent help desk tickets are available yet.
         </div>
         {% endif %}
       </div>
@@ -597,7 +600,7 @@
                   <div class="text-end">
                     <div class="fw-bold">{{ department.asset_total }} assets</div>
                     <small class="{% if department.ticket_total > 0 %}text-warning{% else %}text-success{% endif %}">
-                      {{ department.ticket_total }} tickets · {{ department.user_total }} users
+                      {{ department.ticket_total }} tickets &middot; {{ department.user_total }} users
                     </small>
                   </div>
                 </div>

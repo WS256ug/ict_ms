@@ -1,0 +1,10 @@
+<div id="ticket-asset-field">
+  <label class="form-label" for="{{ asset_field.id_for_label }}">{{ asset_field.label }}</label>
+  {{ asset_field }}
+  {% if asset_help_text %}
+  <div class="form-text">{{ asset_help_text }}</div>
+  {% endif %}
+  {% for error in asset_field.errors %}
+  <div class="text-danger small mt-1">{{ error }}</div>
+  {% endfor %}
+</div>

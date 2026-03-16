@@ -1,0 +1,68 @@
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0">Resolution</h5>
+  </div>
+  <div class="card-body">
+    {% if resolution_message %}
+    <div class="alert alert-success py-2" role="alert">
+      {{ resolution_message }}
+    </div>
+    {% endif %}
+
+    {% if resolution %}
+    <dl class="row mb-4">
+      <dt class="col-sm-4">Summary</dt>
+      <dd class="col-sm-8">{{ resolution.resolution_summary|linebreaksbr }}</dd>
+      <dt class="col-sm-4">Root Cause</dt>
+      <dd class="col-sm-8">{{ resolution.root_cause|linebreaksbr|default:"-" }}</dd>
+      <dt class="col-sm-4">Action Taken</dt>
+      <dd class="col-sm-8">{{ resolution.action_taken|linebreaksbr }}</dd>
+      <dt class="col-sm-4">Resolved By</dt>
+      <dd class="col-sm-8">
+        {% if resolution.resolved_by %}
+        {{ resolution.resolved_by.get_full_name|default:resolution.resolved_by.email }}
+        {% else %}
+        -
+        {% endif %}
+      </dd>
+      <dt class="col-sm-4">Resolved At</dt>
+      <dd class="col-sm-8">{{ resolution.resolved_at|date:"M j, Y H:i" }}</dd>
+    </dl>
+    {% endif %}
+
+    {% if can_workflow_ticket %}
+    <form
+      method="post"
+      hx-post="{% url 'tickets:ticket_resolution_update' ticket.pk %}"
+      hx-target="#ticket-resolution-panel">
+      {% csrf_token %}
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label" for="{{ resolution_form.resolution_summary.id_for_label }}">{{ resolution_form.resolution_summary.label }}</label>
+          {{ resolution_form.resolution_summary }}
+          {% for error in resolution_form.resolution_summary.errors %}
+          <div class="text-danger small mt-1">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="{{ resolution_form.root_cause.id_for_label }}">{{ resolution_form.root_cause.label }}</label>
+          {{ resolution_form.root_cause }}
+          {% for error in resolution_form.root_cause.errors %}
+          <div class="text-danger small mt-1">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="{{ resolution_form.action_taken.id_for_label }}">{{ resolution_form.action_taken.label }}</label>
+          {{ resolution_form.action_taken }}
+          {% for error in resolution_form.action_taken.errors %}
+          <div class="text-danger small mt-1">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-success">Save Resolution</button>
+        </div>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</div>

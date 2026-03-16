@@ -1,0 +1,109 @@
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0">Workflow</h5>
+  </div>
+  <div class="card-body">
+    {% if workflow_message %}
+    <div class="alert alert-success py-2" role="alert">
+      {{ workflow_message }}
+    </div>
+    {% endif %}
+
+    <div class="row g-2 mb-3">
+      {% if ticket.is_asset_fault %}
+      <div class="col-6">
+        <span class="badge bg-info-subtle text-info">Asset Fault</span>
+      </div>
+      {% endif %}
+      {% if ticket.requires_maintenance %}
+      <div class="col-6">
+        <span class="badge bg-warning-subtle text-warning-emphasis">Requires Maintenance</span>
+      </div>
+      {% endif %}
+      {% if ticket.escalated %}
+      <div class="col-6">
+        <span class="badge bg-danger-subtle text-danger">Escalated</span>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if can_workflow_ticket %}
+    <form
+      method="post"
+      hx-post="{% url 'tickets:ticket_workflow_update' ticket.pk %}"
+      hx-target="#ticket-workflow-panel">
+      {% csrf_token %}
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label" for="{{ workflow_form.status.id_for_label }}">{{ workflow_form.status.label }}</label>
+          {{ workflow_form.status }}
+          {% for error in workflow_form.status.errors %}
+          <div class="text-danger small mt-1">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="{{ workflow_form.impact.id_for_label }}">{{ workflow_form.impact.label }}</label>
+          {{ workflow_form.impact }}
+          {% for error in workflow_form.impact.errors %}
+          <div class="text-danger small mt-1">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="{{ workflow_form.assigned_to.id_for_label }}">{{ workflow_form.assigned_to.label }}</label>
+          {{ workflow_form.assigned_to }}
+          {% for error in workflow_form.assigned_to.errors %}
+          <div class="text-danger small mt-1">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="{{ workflow_form.due_date.id_for_label }}">{{ workflow_form.due_date.label }}</label>
+          {{ workflow_form.due_date }}
+          {% for error in workflow_form.due_date.errors %}
+          <div class="text-danger small mt-1">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-md-6">
+          <div class="form-check">
+            {{ workflow_form.requires_maintenance }}
+            <label class="form-check-label" for="{{ workflow_form.requires_maintenance.id_for_label }}">
+              {{ workflow_form.requires_maintenance.label }}
+            </label>
+          </div>
+          {% for error in workflow_form.requires_maintenance.errors %}
+          <div class="text-danger small mt-1">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-md-6">
+          <div class="form-check">
+            {{ workflow_form.escalated }}
+            <label class="form-check-label" for="{{ workflow_form.escalated.id_for_label }}">
+              {{ workflow_form.escalated.label }}
+            </label>
+          </div>
+          {% for error in workflow_form.escalated.errors %}
+          <div class="text-danger small mt-1">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-12">
+          <label class="form-label" for="{{ workflow_form.resolution_notes.id_for_label }}">{{ workflow_form.resolution_notes.label }}</label>
+          {{ workflow_form.resolution_notes }}
+          {% for error in workflow_form.resolution_notes.errors %}
+          <div class="text-danger small mt-1">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary">Update Workflow</button>
+        </div>
+      </div>
+    </form>
+    {% if ticket.can_create_maintenance %}
+    <form method="post" action="{% url 'tickets:ticket_create_maintenance' ticket.pk %}" class="mt-3">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-outline-primary">Create Maintenance</button>
+    </form>
+    {% endif %}
+    {% else %}
+    <p class="text-muted mb-0">Workflow actions are limited to help desk staff, admins, or the assigned technician.</p>
+    {% endif %}
+  </div>
+</div>

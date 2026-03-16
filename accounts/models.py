@@ -44,6 +44,7 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = [
         ('ADMIN', 'System Administrator'),
+        ('HELP_DESK', 'Help Desk Officer'),
         ('TECHNICIAN', 'ICT Technician'),
         ('DEPARTMENT_USER', 'Department User'),
         ('MANAGEMENT', 'Management Viewer'),
@@ -87,6 +88,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def is_technician(self):
         return self.role == 'TECHNICIAN'
+
+    @property
+    def is_help_desk(self):
+        return self.role == 'HELP_DESK'
     
     @property
     def is_department_user(self):

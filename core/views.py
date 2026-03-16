@@ -78,9 +78,7 @@ def landing_page(request):
         )
     )
 
-    open_ticket_queryset = FaultTicket.objects.exclude(
-        status__in=["RESOLVED", "CLOSED", "CANCELLED"]
-    )
+    open_ticket_queryset = FaultTicket.objects.filter(status__in=FaultTicket.OPEN_STATUSES)
     open_ticket_total = _safe_count(open_ticket_queryset)
     pending_schedule_total = _safe_count(MaintenanceSchedule.objects.filter(is_completed=False))
     due_service_total = _safe_count(
@@ -91,8 +89,7 @@ def landing_page(request):
     )
     overdue_ticket_total = _safe_count(
         open_ticket_queryset.filter(
-            priority__in=["HIGH", "CRITICAL"],
-            created_at__lt=now - timedelta(hours=48),
+            due_date__lt=now,
         )
     )
 
@@ -243,12 +240,12 @@ def landing_page(request):
                 "footer": f"{overdue_assignment_total} overdue returns",
             },
             {
-                "label": "Open Fault Tickets",
+                "label": "Open Help Desk Tickets",
                 "value": open_ticket_total,
                 "icon": "ph ph-warning-octagon",
                 "tone": "red",
                 "detail": "Current incidents still in the service queue",
-                "footer": f"{overdue_ticket_total} overdue high-priority cases",
+                "footer": f"{overdue_ticket_total} overdue ticket cases",
             },
             {
                 "label": "Maintenance Queue",
@@ -334,7 +331,7 @@ def landing_page(request):
                 "label": "Overdue Actions",
                 "value": overdue_ticket_total + overdue_assignment_total,
                 "suffix": "",
-                "note": "High-priority tickets and late asset returns needing follow-up",
+                "note": "Overdue tickets and late asset returns needing follow-up",
             },
         ],
         "operations_snapshot": [

@@ -21,6 +21,7 @@ from assets.models import (
     MaintenanceRecord,
     Software,
 )
+from tickets.models import FaultTicket, TicketResolution
 
 
 class ReportViewTests(TestCase):
@@ -38,6 +39,31 @@ class ReportViewTests(TestCase):
             role="ADMIN",
             department=self.department,
         )
+        self.technician = get_user_model().objects.create_user(
+            email="report-tech@example.com",
+            password="password123",
+            first_name="Alex",
+            last_name="Technician",
+            role="TECHNICIAN",
+            department=self.department,
+        )
+        self.department_user = get_user_model().objects.create_user(
+            email="report-user@example.com",
+            password="password123",
+            first_name="Desk",
+            last_name="Reporter",
+            role="DEPARTMENT_USER",
+            department=self.department,
+        )
+        self.other_department_user = get_user_model().objects.create_user(
+            email="ops-user@example.com",
+            password="password123",
+            first_name="Ops",
+            last_name="Reporter",
+            role="DEPARTMENT_USER",
+            department=self.operations_department,
+        )
+
         self.category = AssetCategory.objects.get(name="Computers")
         self.asset_type = AssetType.objects.create(category=self.category, name="Laptop")
         self.primary_location = Location.objects.create(
@@ -136,8 +162,44 @@ class ReportViewTests(TestCase):
             notes="In workshop",
         )
 
+        self.open_ticket = FaultTicket.objects.create(
+            title="Laptop not booting",
+            description="User reports the laptop does not boot.",
+            ticket_category=FaultTicket.CATEGORY_HARDWARE,
+            is_asset_fault=True,
+            asset=self.assigned_asset,
+            department=self.department,
+            reported_by=self.department_user,
+            assigned_to=self.technician,
+            status=FaultTicket.STATUS_IN_PROGRESS,
+            priority=FaultTicket.PRIORITY_CRITICAL,
+            due_date=timezone.now() - timedelta(hours=2),
+            requires_maintenance=True,
+        )
+        self.resolved_ticket = FaultTicket.objects.create(
+            title="Password reset",
+            description="Reset account for operations staff member.",
+            ticket_category=FaultTicket.CATEGORY_ACCOUNT,
+            department=self.operations_department,
+            reported_by=self.other_department_user,
+            assigned_to=self.technician,
+            status=FaultTicket.STATUS_RESOLVED,
+            priority=FaultTicket.PRIORITY_MEDIUM,
+            first_response_at=timezone.now() - timedelta(hours=3),
+            resolved_at=timezone.now() - timedelta(hours=1),
+        )
+        TicketResolution.objects.create(
+            ticket=self.resolved_ticket,
+            resolution_summary="Password reset and verified.",
+            root_cause="Expired credentials.",
+            action_taken="Reset password and confirmed login.",
+            resolved_by=self.user,
+            resolved_at=self.resolved_ticket.resolved_at,
+        )
+
         self.report_pages = {
-            "reports:index": "Asset Reports",
+            "reports:index": "Operations Reports",
+            "reports:ticket_report": "Ticket Report",
             "reports:asset_inventory": "Asset Inventory",
             "reports:assets_by_department": "Assets by Department",
             "reports:assets_by_location": "Assets by Location",
@@ -148,6 +210,7 @@ class ReportViewTests(TestCase):
             "reports:audit_report": "Audit Report",
         }
         self.exportable_pages = [
+            "reports:ticket_report",
             "reports:asset_inventory",
             "reports:assets_by_department",
             "reports:assets_by_location",
@@ -176,8 +239,14 @@ class ReportViewTests(TestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertContains(response, heading)
 
-    def test_report_pages_include_expected_asset_data(self):
+    def test_report_pages_include_expected_asset_and_ticket_data(self):
         self.client.force_login(self.user)
+
+        ticket_response = self.client.get(reverse("reports:ticket_report"))
+        self.assertContains(ticket_response, self.open_ticket.ticket_id)
+        self.assertContains(ticket_response, "Hardware Fault")
+        self.assertContains(ticket_response, self.assigned_asset.asset_tag)
+        self.assertContains(ticket_response, self.technician.get_full_name())
 
         inventory_response = self.client.get(reverse("reports:asset_inventory"))
         self.assertContains(inventory_response, self.assigned_asset.asset_tag)
@@ -209,6 +278,15 @@ class ReportViewTests(TestCase):
         self.assertContains(audit_response, self.assigned_asset.asset_tag)
         self.assertContains(audit_response, "Missing")
 
+    def test_ticket_report_respects_ticket_visibility(self):
+        self.client.force_login(self.department_user)
+
+        response = self.client.get(reverse("reports:ticket_report"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.open_ticket.ticket_id)
+        self.assertNotContains(response, self.resolved_ticket.ticket_id)
+
     def test_report_pages_support_csv_downloads(self):
         self.client.force_login(self.user)
 
@@ -219,12 +297,12 @@ class ReportViewTests(TestCase):
                 self.assertIn("text/csv", response["Content-Type"])
                 self.assertIn("attachment;", response["Content-Disposition"])
 
-        inventory_csv = self.client.get(
-            reverse("reports:asset_inventory"),
+        ticket_csv = self.client.get(
+            reverse("reports:ticket_report"),
             {"export": "csv"},
         )
-        self.assertContains(inventory_csv, self.assigned_asset.asset_tag)
-        self.assertContains(inventory_csv, "Asset Tag")
+        self.assertContains(ticket_csv, self.open_ticket.ticket_id)
+        self.assertContains(ticket_csv, "Ticket ID")
 
     def test_report_pages_support_pdf_downloads(self):
         self.client.force_login(self.user)

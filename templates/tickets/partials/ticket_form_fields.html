@@ -1,0 +1,72 @@
+{% if form.non_field_errors %}
+<div class="alert alert-danger" role="alert">
+  {% for error in form.non_field_errors %}
+  <div>{{ error }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-md-8">
+    <label class="form-label" for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+    {{ form.title }}
+    {% for error in form.title.errors %}
+    <div class="text-danger small mt-1">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="col-md-4">
+    <label class="form-label" for="{{ form.priority.id_for_label }}">{{ form.priority.label }}</label>
+    {{ form.priority }}
+    {% for error in form.priority.errors %}
+    <div class="text-danger small mt-1">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.department.id_for_label }}">{{ form.department.label }}</label>
+    {{ form.department }}
+    {% for error in form.department.errors %}
+    <div class="text-danger small mt-1">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.ticket_category.id_for_label }}">{{ form.ticket_category.label }}</label>
+    {{ form.ticket_category }}
+    {% for error in form.ticket_category.errors %}
+    <div class="text-danger small mt-1">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="col-12">
+    <div class="form-check">
+      {{ form.is_asset_fault }}
+      <label class="form-check-label" for="{{ form.is_asset_fault.id_for_label }}">{{ form.is_asset_fault.label }}</label>
+    </div>
+    <div class="form-text">Use this when the issue is tied to a physical ICT asset and may need maintenance follow-up.</div>
+    {% for error in form.is_asset_fault.errors %}
+    <div class="text-danger small mt-1">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="col-md-6">
+    {% include "tickets/partials/ticket_asset_field.html" with asset_field=form.asset asset_help_text="Only assets from the selected department are shown." %}
+  </div>
+
+  <div class="col-md-6">
+    <label class="form-label" for="{{ form.location.id_for_label }}">{{ form.location.label }}</label>
+    {{ form.location }}
+    {% for error in form.location.errors %}
+    <div class="text-danger small mt-1">{{ error }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="col-12">
+    <label class="form-label" for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
+    {{ form.description }}
+    {% for error in form.description.errors %}
+    <div class="text-danger small mt-1">{{ error }}</div>
+    {% endfor %}
+  </div>
+</div>

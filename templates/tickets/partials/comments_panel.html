@@ -1,0 +1,43 @@
+<div class="card" id="ticket-comments">
+  <div class="card-header">
+    <h5 class="mb-0">Comments</h5>
+  </div>
+  <div class="card-body">
+    {% if comment_message %}
+    <div class="alert alert-success py-2" role="alert">
+      {{ comment_message }}
+    </div>
+    {% endif %}
+
+    {% if comments %}
+    <div class="d-flex flex-column gap-3 mb-4">
+      {% for comment in comments %}
+      <div class="border rounded p-3">
+        <div class="d-flex justify-content-between gap-2 mb-2">
+          <div class="fw-semibold">{{ comment.user.get_full_name|default:comment.user.email }}</div>
+          <div class="text-muted small">{{ comment.created_at|date:"M j, Y H:i" }}</div>
+        </div>
+        <div>{{ comment.comment|linebreaksbr }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted">No comments have been added yet.</p>
+    {% endif %}
+
+    {% if can_comment %}
+    <form
+      method="post"
+      hx-post="{% url 'tickets:ticket_comment_create' ticket.pk %}"
+      hx-target="#ticket-comments-panel">
+      {% csrf_token %}
+      <label class="form-label" for="{{ comment_form.comment.id_for_label }}">Add Comment</label>
+      {{ comment_form.comment }}
+      {% for error in comment_form.comment.errors %}
+      <div class="text-danger small mt-1">{{ error }}</div>
+      {% endfor %}
+      <button type="submit" class="btn btn-primary mt-3">Post Comment</button>
+    </form>
+    {% endif %}
+  </div>
+</div>

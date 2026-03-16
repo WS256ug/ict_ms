@@ -1,0 +1,68 @@
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0">Attachments</h5>
+  </div>
+  <div class="card-body">
+    {% if attachment_message %}
+    <div class="alert alert-success py-2" role="alert">
+      {{ attachment_message }}
+    </div>
+    {% endif %}
+
+    {% if attachments %}
+    <div class="list-group list-group-flush mb-4">
+      {% for attachment in attachments %}
+      <div class="list-group-item px-0">
+        <div class="d-flex justify-content-between align-items-start gap-3">
+          <div>
+            <a href="{{ attachment.file.url }}" target="_blank" rel="noopener">
+              {{ attachment.file.name|cut:"tickets/attachments/" }}
+            </a>
+            {% if attachment.description %}
+            <div class="text-muted small">{{ attachment.description }}</div>
+            {% endif %}
+            <div class="text-muted small">
+              Uploaded by {{ attachment.uploaded_by.get_full_name|default:attachment.uploaded_by.email }}
+              on {{ attachment.uploaded_at|date:"M j, Y H:i" }}
+            </div>
+          </div>
+          <span class="badge bg-light text-dark border">File</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted">No files have been attached yet.</p>
+    {% endif %}
+
+    {% if can_upload_attachment %}
+    <form
+      method="post"
+      enctype="multipart/form-data"
+      hx-post="{% url 'tickets:ticket_attachment_upload' ticket.pk %}"
+      hx-target="#ticket-attachment-panel"
+      hx-encoding="multipart/form-data">
+      {% csrf_token %}
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label" for="{{ attachment_form.file.id_for_label }}">{{ attachment_form.file.label }}</label>
+          {{ attachment_form.file }}
+          {% for error in attachment_form.file.errors %}
+          <div class="text-danger small mt-1">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="{{ attachment_form.description.id_for_label }}">{{ attachment_form.description.label }}</label>
+          {{ attachment_form.description }}
+          {% for error in attachment_form.description.errors %}
+          <div class="text-danger small mt-1">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-outline-primary">Upload Attachment</button>
+        </div>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</div>

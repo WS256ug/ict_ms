@@ -5,13 +5,25 @@
   <div class="col-12">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
       <div>
-        <h4 class="mb-1">Asset Reports</h4>
-        <p class="text-muted mb-0">Open inventory, assignment, maintenance, software, depreciation, and audit reports.</p>
+        <h4 class="mb-1">Operations Reports</h4>
+        <p class="text-muted mb-0">Open help desk, inventory, assignment, maintenance, software, depreciation, and audit reports.</p>
       </div>
       <a href="{% url 'assets:asset_list' %}" class="btn btn-outline-secondary">Asset Register</a>
     </div>
   </div>
 
+  <div class="col-md-4 col-xl-2">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Tickets</p>
+      <h4 class="mb-0">{{ stats.tickets }}</h4>
+    </div>
+  </div>
+  <div class="col-md-4 col-xl-2">
+    <div class="border rounded-3 bg-white p-3 h-100">
+      <p class="text-muted text-uppercase small mb-1">Overdue Tickets</p>
+      <h4 class="mb-0">{{ stats.overdue_tickets }}</h4>
+    </div>
+  </div>
   <div class="col-md-4 col-xl-2">
     <div class="border rounded-3 bg-white p-3 h-100">
       <p class="text-muted text-uppercase small mb-1">Assets</p>

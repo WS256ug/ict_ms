@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-12">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div>
+        <h4 class="mb-1">{{ ticket.ticket_id }}</h4>
+        <p class="text-muted mb-0">{{ ticket.title }}</p>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{% url 'tickets:ticket_list' %}" class="btn btn-outline-secondary">Back</a>
+        {% if can_workflow_ticket or ticket.reported_by_id == request.user.id and ticket.status == "OPEN" %}
+        <a href="{% url 'tickets:ticket_update' ticket.pk %}" class="btn btn-primary">Edit Ticket</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if messages %}
+  <div class="col-12">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">Overview</h5>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-5">Category</dt>
+          <dd class="col-7">{{ ticket.get_ticket_category_display }}</dd>
+          <dt class="col-5">Priority</dt>
+          <dd class="col-7">{{ ticket.get_priority_display }}</dd>
+          <dt class="col-5">Impact</dt>
+          <dd class="col-7">{{ ticket.get_impact_display }}</dd>
+          <dt class="col-5">Status</dt>
+          <dd class="col-7">{{ ticket.get_status_display }}</dd>
+          <dt class="col-5">Requester</dt>
+          <dd class="col-7">{{ ticket.reported_by.get_full_name|default:ticket.reported_by.email }}</dd>
+          <dt class="col-5">Triaged By</dt>
+          <dd class="col-7">
+            {% if ticket.triaged_by %}
+            {{ ticket.triaged_by.get_full_name|default:ticket.triaged_by.email }}
+            {% else %}
+            -
+            {% endif %}
+          </dd>
+          <dt class="col-5">Assignee</dt>
+          <dd class="col-7">
+            {% if ticket.assigned_to %}
+            {{ ticket.assigned_to.get_full_name|default:ticket.assigned_to.email }}
+            {% else %}
+            Unassigned
+            {% endif %}
+          </dd>
+          <dt class="col-5">Department</dt>
+          <dd class="col-7">{{ ticket.department }}</dd>
+          <dt class="col-5">Location</dt>
+          <dd class="col-7">{{ ticket.location|default:"-" }}</dd>
+          <dt class="col-5">Asset</dt>
+          <dd class="col-7">
+            {% if ticket.asset %}
+            <a href="{% url 'assets:asset_detail' ticket.asset.pk %}">{{ ticket.asset.asset_tag }}</a>
+            <div class="text-muted small">{{ ticket.asset.name }}</div>
+            {% else %}
+            <span class="text-muted">General ICT support</span>
+            {% endif %}
+          </dd>
+          <dt class="col-5">Due Date</dt>
+          <dd class="col-7">
+            {% if ticket.due_date %}
+            {{ ticket.due_date|date:"M j, Y H:i" }}
+            {% if ticket.is_overdue %}
+            <div class="text-danger small">Overdue</div>
+            {% else %}
+            <div class="text-muted small">{{ ticket.due_date|timeuntil }} left</div>
+            {% endif %}
+            {% else %}
+            -
+            {% endif %}
+          </dd>
+          <dt class="col-5">First Response</dt>
+          <dd class="col-7">{{ ticket.first_response_at|date:"M j, Y H:i"|default:"-" }}</dd>
+          <dt class="col-5">Resolved</dt>
+          <dd class="col-7">{{ ticket.resolved_at|date:"M j, Y H:i"|default:"-" }}</dd>
+          <dt class="col-5">Resolution Time</dt>
+          <dd class="col-7">{{ ticket.resolution_time|default:"Still open" }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div id="ticket-workflow-panel">
+      {% include "tickets/partials/workflow_panel.html" %}
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="card-header">
+        <h5 class="mb-0">Issue Details</h5>
+      </div>
+      <div class="card-body">
+        <p class="mb-0">{{ ticket.description|linebreaksbr }}</p>
+      </div>
+    </div>
+
+    <div id="ticket-resolution-panel" class="mb-3">
+      {% include "tickets/partials/resolution_panel.html" %}
+    </div>
+
+    <div id="ticket-comments-panel" class="mb-3">
+      {% include "tickets/partials/comments_panel.html" %}
+    </div>
+
+    <div id="ticket-attachment-panel">
+      {% include "tickets/partials/attachment_panel.html" %}
+    </div>
+  </div>
+</div>
+{% endblock %}
