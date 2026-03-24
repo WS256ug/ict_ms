@@ -1,0 +1,107 @@
+<div class="col-md-6">
+  <label class="form-label" for="{{ form.asset_type.id_for_label }}">Asset Type</label>
+  {{ form.asset_type }}
+  <div class="form-text">Asset types update automatically based on the selected category.</div>
+  <div class="text-danger small">{{ form.asset_type.errors }}</div>
+</div>
+
+{% if form.show_software_field %}
+<div class="col-12" id="software-field-container" data-software-picker>
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <label class="form-label mb-0" for="software-catalog-picker">Installed Software</label>
+    <div class="d-flex gap-2">
+      <a href="{% url 'assets:software_list' %}" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener">View Catalog</a>
+      {% if request.user.is_admin or request.user.is_technician %}
+      <a href="{% url 'assets:software_create' %}" class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener">Add Software</a>
+      {% endif %}
+    </div>
+  </div>
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <label class="form-label" for="software-catalog-picker">Software Catalog</label>
+      <div class="border rounded-3 p-3 bg-body-tertiary d-flex flex-column gap-2" id="software-catalog-picker" data-software-source-list aria-label="Software catalog">
+        {% for software in form.available_software_options %}
+        <label class="form-check border rounded-2 px-3 py-2 bg-white d-flex align-items-start gap-2" data-software-source-item data-software-id="{{ software.pk }}" data-software-label="{{ software }}">
+          <input class="form-check-input mt-1" type="checkbox" value="{{ software.pk }}" data-software-source-input>
+          <span class="form-check-label">{{ software }}</span>
+        </label>
+        {% empty %}
+        <div class="text-muted small" data-software-source-empty>No software is available to add right now.</div>
+        {% endfor %}
+      </div>
+      <div class="d-flex gap-2 mt-2">
+        <button type="button" class="btn btn-primary btn-sm" data-software-add>Add Selected Software</button>
+      </div>
+      <div class="form-text">Select one or more software items from the catalog, then click the button to add them to this asset.</div>
+    </div>
+    <div class="col-lg-6">
+      <label class="form-label">Software Added To This Asset</label>
+      <div class="border rounded-3 p-3 bg-body-tertiary d-flex flex-column gap-2" data-software-selected>
+        {% for software in form.selected_software_options %}
+        <div class="d-flex justify-content-between align-items-center gap-2 border rounded-2 px-3 py-2 bg-white" data-software-item data-software-id="{{ software.pk }}" data-software-label="{{ software }}">
+          <span>{{ software }}</span>
+          <div class="d-flex align-items-center gap-2">
+            <input type="hidden" name="software" value="{{ software.pk }}">
+            <button type="button" class="btn btn-sm btn-outline-danger" data-software-remove>Remove</button>
+          </div>
+        </div>
+        {% empty %}
+        <div class="text-muted small" data-software-selected-empty>
+          No software has been added to this asset yet.
+        </div>
+        {% endfor %}
+      </div>
+      <template data-software-item-template>
+        <div class="d-flex justify-content-between align-items-center gap-2 border rounded-2 px-3 py-2 bg-white" data-software-item>
+          <span data-software-item-label></span>
+          <div class="d-flex align-items-center gap-2">
+            <input type="hidden" name="software" value="" data-software-item-input>
+            <button type="button" class="btn btn-sm btn-outline-danger" data-software-remove>Remove</button>
+          </div>
+        </div>
+      </template>
+      <template data-software-empty-template>
+        <div class="text-muted small" data-software-selected-empty>
+          No software has been added to this asset yet.
+        </div>
+      </template>
+      <template data-software-source-empty-template>
+        <div class="text-muted small" data-software-source-empty>No software is available to add right now.</div>
+      </template>
+      <template data-software-source-item-template>
+        <label class="form-check border rounded-2 px-3 py-2 bg-white d-flex align-items-start gap-2" data-software-source-item>
+          <input class="form-check-input mt-1" type="checkbox" value="" data-software-source-input>
+          <span class="form-check-label" data-software-source-label></span>
+        </label>
+      </template>
+      <div class="form-text">Only software shown here will be saved as installed on this machine.</div>
+    </div>
+  </div>
+  {% if form.software.help_text %}
+  <div class="form-text">{{ form.software.help_text }}</div>
+  {% endif %}
+  <div class="text-danger small">{{ form.software.errors }}</div>
+</div>
+{% endif %}
+
+{% if form.show_attribute_fields %}
+<div class="col-12">
+  <hr class="my-1">
+  <div>
+    <h6 class="mb-1">Category Attributes</h6>
+    <p class="text-muted mb-0 small">
+      Fill in the extra details defined for the selected asset category.
+    </p>
+  </div>
+</div>
+{% for field in form.dynamic_attribute_bound_fields %}
+<div class="col-md-6">
+  <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+  {{ field }}
+  {% if field.help_text %}
+  <div class="form-text">{{ field.help_text }}</div>
+  {% endif %}
+  <div class="text-danger small">{{ field.errors }}</div>
+</div>
+{% endfor %}
+{% endif %}

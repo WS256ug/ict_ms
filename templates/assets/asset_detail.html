@@ -255,14 +255,15 @@
 
   <div class="col-lg-6">
     <div class="card">
-      <div class="card-header">
+      <div class="card-header d-flex justify-content-between align-items-center gap-2">
         <h5 class="mb-0">Installed Software</h5>
+        <a href="{% url 'assets:software_list' %}" class="btn btn-sm btn-outline-secondary">Software Catalog</a>
       </div>
       <div class="card-body">
         <ul class="list-group list-group-flush">
           {% for item in installed_software %}
           <li class="list-group-item px-0 d-flex justify-content-between">
-            <span>{{ item.software }}</span>
+            <a href="{% url 'assets:software_detail' item.software.pk %}">{{ item.software }}</a>
             <span class="text-muted">{{ item.installed_date|default:"-" }}</span>
           </li>
           {% empty %}

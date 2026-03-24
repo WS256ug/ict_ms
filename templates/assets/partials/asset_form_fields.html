@@ -22,9 +22,9 @@
       id="{{ form.category.id_for_label }}"
       class="form-select"
       hx-get="{% url 'assets:asset_type_field' %}"
-      hx-target="#asset-type-field"
+      hx-target="#asset-category-fields"
       hx-trigger="change"
-      hx-include="#id_asset_type">
+      hx-include="#asset-form">
       {% for value, label in form.category.field.choices %}
       <option value="{{ value }}"{% if form.category.value|stringformat:"s" == value|stringformat:"s" %} selected{% endif %}>
         {{ label }}
@@ -33,8 +33,10 @@
     </select>
     <div class="text-danger small">{{ form.category.errors }}</div>
   </div>
-  <div class="col-md-6" id="asset-type-field">
-    {% include "assets/partials/asset_type_field.html" with asset_types=form.fields.asset_type.queryset selected_asset_type_id=form.asset_type.value|stringformat:"s" asset_type_errors=form.asset_type.errors %}
+  <div class="col-12">
+    <div class="row g-3" id="asset-category-fields">
+      {% include "assets/partials/asset_category_fields.html" %}
+    </div>
   </div>
   <div class="col-md-6">
     <label class="form-label" for="{{ form.serial_number.id_for_label }}">Serial Number</label>

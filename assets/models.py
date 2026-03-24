@@ -226,7 +226,7 @@ class Asset(models.Model):
 
     @property
     def current_location_record(self):
-        return self.location_history.order_by("-moved_at").first()
+        return self.location_history.order_by("-moved_at", "-pk").first()
 
     @property
     def current_location(self):

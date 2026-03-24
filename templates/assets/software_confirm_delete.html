@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="border border-danger rounded-3 bg-white p-4">
+      <h5 class="text-danger mb-3">Delete Software</h5>
+      <p class="mb-3">
+        You are about to delete <strong>{{ software }}</strong>.
+      </p>
+      <p class="text-muted">
+        Any installation records linked to this software on computer assets will also be removed.
+      </p>
+
+      <dl class="row mb-4">
+        <dt class="col-4">Name</dt>
+        <dd class="col-8">{{ software.name }}</dd>
+        <dt class="col-4">Version</dt>
+        <dd class="col-8">{{ software.version|default:"-" }}</dd>
+        <dt class="col-4">Installations</dt>
+        <dd class="col-8">{{ software.installation_count }}</dd>
+      </dl>
+
+      <form method="post" class="d-flex gap-2">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Yes, Delete Software</button>
+        <a href="{% url 'assets:software_detail' software.pk %}" class="btn btn-outline-secondary">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

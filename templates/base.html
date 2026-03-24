@@ -96,6 +96,7 @@
             <li class="pc-item"><a class="pc-link" href="{% url 'assets:asset_list' %}">All Assets</a></li>
             <li class="pc-item"><a class="pc-link" href="{% url 'assets:assignment_list' %}">Assignments</a></li>
             <li class="pc-item"><a class="pc-link" href="{% url 'assets:maintenance_list' %}">Maintenance</a></li>
+            <li class="pc-item"><a class="pc-link" href="{% url 'assets:software_list' %}">Software</a></li>
             {% if request.user.is_authenticated and request.user.is_admin %}
             <li class="pc-item"><a class="pc-link" href="{% url 'assets:location_list' %}">Locations</a></li>
             {% endif %}

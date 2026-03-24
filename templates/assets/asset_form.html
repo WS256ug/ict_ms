@@ -29,8 +29,11 @@
         <h5 class="mb-0">{{ action }} Asset</h5>
       </div>
       <div class="card-body">
-        <form method="post" novalidate>
+        <form method="post" novalidate id="asset-form">
           {% csrf_token %}
+          {% if asset %}
+          <input type="hidden" name="asset_instance_id" value="{{ asset.pk }}">
+          {% endif %}
           {% include "assets/partials/asset_form_fields.html" %}
 
           <div class="d-flex gap-2 mt-4">
@@ -46,4 +49,164 @@
     </div>
   </div>
 </div>
+
+<script>
+  (function () {
+    function getSoftwarePickerParts(container) {
+      return {
+        sourceList: container.querySelector('[data-software-source-list]'),
+        sourceItemTemplate: container.querySelector('[data-software-source-item-template]'),
+        selectedList: container.querySelector('[data-software-selected]'),
+        itemTemplate: container.querySelector('[data-software-item-template]'),
+        selectedEmptyTemplate: container.querySelector('[data-software-empty-template]'),
+        sourceEmptyTemplate: container.querySelector('[data-software-source-empty-template]')
+      };
+    }
+
+    function sortSourceItems(sourceList) {
+      const items = Array.from(sourceList.querySelectorAll('[data-software-source-item]'));
+
+      items.sort(function (left, right) {
+        return left.dataset.softwareLabel.localeCompare(right.dataset.softwareLabel);
+      });
+
+      items.forEach(function (item) {
+        sourceList.appendChild(item);
+      });
+    }
+
+    function ensureSourceState(container) {
+      const parts = getSoftwarePickerParts(container);
+      if (!parts.sourceList) {
+        return;
+      }
+
+      const emptyState = parts.sourceList.querySelector('[data-software-source-empty]');
+      const hasItems = parts.sourceList.querySelector('[data-software-source-item]');
+
+      if (hasItems && emptyState) {
+        emptyState.remove();
+        return;
+      }
+
+      if (!hasItems && !emptyState && parts.sourceEmptyTemplate) {
+        parts.sourceList.appendChild(parts.sourceEmptyTemplate.content.firstElementChild.cloneNode(true));
+      }
+    }
+
+    function ensureSelectedState(container) {
+      const parts = getSoftwarePickerParts(container);
+      if (!parts.selectedList) {
+        return;
+      }
+
+      const emptyState = parts.selectedList.querySelector('[data-software-selected-empty]');
+      const hasItems = parts.selectedList.querySelector('[data-software-item]');
+
+      if (hasItems && emptyState) {
+        emptyState.remove();
+        return;
+      }
+
+      if (!hasItems && !emptyState && parts.selectedEmptyTemplate) {
+        parts.selectedList.appendChild(parts.selectedEmptyTemplate.content.firstElementChild.cloneNode(true));
+      }
+    }
+
+    function addSoftwareToAsset(container) {
+      const parts = getSoftwarePickerParts(container);
+      if (!parts.sourceList || !parts.selectedList || !parts.itemTemplate) {
+        return;
+      }
+
+      const selectedItems = Array.from(
+        parts.sourceList.querySelectorAll('[data-software-source-input]:checked')
+      ).map(function (input) {
+        return input.closest('[data-software-source-item]');
+      });
+
+      if (!selectedItems.length) {
+        return;
+      }
+
+      selectedItems.forEach(function (sourceItem) {
+        const softwareId = sourceItem.dataset.softwareId;
+        const softwareLabel = sourceItem.dataset.softwareLabel;
+
+        if (parts.selectedList.querySelector('[data-software-item][data-software-id="' + softwareId + '"]')) {
+          sourceItem.remove();
+          return;
+        }
+
+        const item = parts.itemTemplate.content.firstElementChild.cloneNode(true);
+        item.dataset.softwareId = softwareId;
+        item.dataset.softwareLabel = softwareLabel;
+        item.querySelector('[data-software-item-label]').textContent = softwareLabel;
+        item.querySelector('[data-software-item-input]').value = softwareId;
+        parts.selectedList.appendChild(item);
+        sourceItem.remove();
+      });
+
+      sortSourceItems(parts.sourceList);
+      ensureSourceState(container);
+      ensureSelectedState(container);
+    }
+
+    function removeSoftwareFromAsset(container, item) {
+      const parts = getSoftwarePickerParts(container);
+      if (!parts.sourceList || !parts.sourceItemTemplate || !item) {
+        return;
+      }
+
+      const sourceItem = parts.sourceItemTemplate.content.firstElementChild.cloneNode(true);
+      sourceItem.dataset.softwareId = item.dataset.softwareId;
+      sourceItem.dataset.softwareLabel = item.dataset.softwareLabel;
+      sourceItem.querySelector('[data-software-source-input]').value = item.dataset.softwareId;
+      sourceItem.querySelector('[data-software-source-label]').textContent = item.dataset.softwareLabel;
+      parts.sourceList.appendChild(sourceItem);
+      item.remove();
+
+      sortSourceItems(parts.sourceList);
+      ensureSourceState(container);
+      ensureSelectedState(container);
+    }
+
+    document.addEventListener('click', function (event) {
+      const addButton = event.target.closest('[data-software-add]');
+      if (addButton) {
+        addSoftwareToAsset(addButton.closest('[data-software-picker]'));
+        return;
+      }
+
+      const removeButton = event.target.closest('[data-software-remove]');
+      if (removeButton) {
+        removeSoftwareFromAsset(
+          removeButton.closest('[data-software-picker]'),
+          removeButton.closest('[data-software-item]')
+        );
+      }
+    });
+
+    function initializeSoftwarePickers(root) {
+      root.querySelectorAll('[data-software-picker]').forEach(function (container) {
+        const parts = getSoftwarePickerParts(container);
+        if (!parts.sourceList || !parts.selectedList) {
+          return;
+        }
+
+        sortSourceItems(parts.sourceList);
+        ensureSourceState(container);
+        ensureSelectedState(container);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      initializeSoftwarePickers(document);
+    });
+
+    document.body.addEventListener('htmx:afterSwap', function (event) {
+      initializeSoftwarePickers(event.target);
+    });
+  })();
+</script>
 {% endblock %}

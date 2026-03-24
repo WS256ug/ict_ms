@@ -2,29 +2,41 @@ from decimal import Decimal
 
 from django import forms
 from django.core.exceptions import ValidationError
+from django.utils.dateparse import parse_date
 
 from accounts.models import Department
 
 from .models import (
+    ASSET_CATEGORY_COMPUTERS,
     Asset,
     AssetAssignment,
+    AssetAttribute,
     AssetAttributeValue,
     AssetCategory,
     AssetDepreciation,
     AssetLocationHistory,
     AssetPurchase,
     AssetType,
+    InstalledSoftware,
     Location,
     MaintenanceRecord,
+    Software,
 )
 
 
 class AssetForm(forms.ModelForm):
+    ATTRIBUTE_FIELD_PREFIX = "attribute_"
+
     location = forms.ModelChoiceField(
         queryset=Location.objects.none(),
         required=False,
         empty_label="Select location",
         widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    software = forms.ModelMultipleChoiceField(
+        queryset=Software.objects.none(),
+        required=False,
+        widget=forms.MultipleHiddenInput(),
     )
     useful_life_years = forms.IntegerField(
         required=False,
@@ -86,21 +98,47 @@ class AssetForm(forms.ModelForm):
         self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
         self.depreciation_instance = None
+        self.category_attributes = []
+        self.dynamic_attribute_field_names = []
+        self.dynamic_attribute_bound_fields = []
+        self.selected_software_ids = set()
+        self.selected_software_options = []
+        self.available_software_options = []
         self.fields["category"].queryset = AssetCategory.objects.ordered_choices()
         self.fields["asset_type"].queryset = AssetType.objects.none()
         self.fields["asset_type"].empty_label = "Select asset type"
         self.fields["department"].queryset = Department.objects.order_by("name")
         self.fields["location"].queryset = Location.objects.order_by("name", "building", "room")
+        self.fields["software"].queryset = Software.objects.order_by("name", "version", "vendor")
         self.fields["purchase"].queryset = AssetPurchase.objects.select_related("supplier").order_by(
             "-purchase_date", "-id"
+        )
+        self.fields["software"].help_text = (
+            "Choose software from the catalog, click Add Selected Software, then save the asset."
         )
         self.fields["useful_life_years"].help_text = (
             "Straight-line depreciation is calculated automatically using the asset purchase cost."
         )
+        self.computer_category_id = (
+            AssetCategory.objects.filter(name=ASSET_CATEGORY_COMPUTERS)
+            .values_list("pk", flat=True)
+            .first()
+        )
+        self.attribute_value_by_id = {}
         current_location = self.instance.current_location if self.instance.pk else None
 
         if current_location and not self.is_bound:
             self.fields["location"].initial = current_location.pk
+        if self.instance.pk and not self.is_bound:
+            self.fields["software"].initial = self.instance.installed_software.values_list(
+                "software_id",
+                flat=True,
+            )
+        if self.instance.pk:
+            self.attribute_value_by_id = {
+                value.attribute_id: value.value
+                for value in self.instance.attribute_values.select_related("attribute")
+            }
 
         if self.instance.pk:
             try:
@@ -135,8 +173,120 @@ class AssetForm(forms.ModelForm):
                 "name",
             )
 
+        self.show_software_field = str(category_id or "") == str(self.computer_category_id or "")
+        selected_software_values = self["software"].value() or []
+        self.selected_software_ids = {str(value) for value in selected_software_values}
+        for software in self.fields["software"].queryset:
+            if str(software.pk) in self.selected_software_ids:
+                self.selected_software_options.append(software)
+            else:
+                self.available_software_options.append(software)
+        if category_id:
+            self.category_attributes = list(
+                AssetAttribute.objects.filter(category_id=category_id).order_by("name")
+            )
+        self._add_attribute_fields()
+        self.show_attribute_fields = bool(self.dynamic_attribute_bound_fields)
+
         if not category_id:
             self.fields["asset_type"].widget.attrs["disabled"] = "disabled"
+
+        if not self.show_software_field:
+            self.fields["software"].widget.attrs["disabled"] = "disabled"
+
+    @classmethod
+    def attribute_field_name(cls, attribute_id):
+        return f"{cls.ATTRIBUTE_FIELD_PREFIX}{attribute_id}"
+
+    @staticmethod
+    def _coerce_boolean_attribute_value(value):
+        if value in (None, ""):
+            return None
+        if isinstance(value, bool):
+            return value
+
+        value = str(value).strip().lower()
+        if value in {"true", "1", "yes", "on"}:
+            return True
+        if value in {"false", "0", "no", "off"}:
+            return False
+        return None
+
+    def _get_attribute_initial_value(self, attribute):
+        raw_value = self.attribute_value_by_id.get(attribute.pk)
+        if raw_value in (None, ""):
+            return None
+        if attribute.field_type == AssetAttribute.FIELD_BOOLEAN:
+            boolean_value = self._coerce_boolean_attribute_value(raw_value)
+            if boolean_value is None:
+                return None
+            return "true" if boolean_value else "false"
+        if attribute.field_type == AssetAttribute.FIELD_DATE:
+            parsed_date = parse_date(raw_value)
+            return parsed_date.isoformat() if parsed_date else raw_value
+        return raw_value
+
+    def _build_attribute_field(self, attribute):
+        help_text = attribute.help_text or ""
+
+        if attribute.field_type == AssetAttribute.FIELD_NUMBER:
+            return forms.DecimalField(
+                label=attribute.name,
+                required=attribute.required,
+                help_text=help_text,
+                widget=forms.NumberInput(attrs={"class": "form-control", "step": "any"}),
+            )
+
+        if attribute.field_type == AssetAttribute.FIELD_DATE:
+            return forms.DateField(
+                label=attribute.name,
+                required=attribute.required,
+                help_text=help_text,
+                widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            )
+
+        if attribute.field_type == AssetAttribute.FIELD_BOOLEAN:
+            return forms.TypedChoiceField(
+                label=attribute.name,
+                required=attribute.required,
+                help_text=help_text,
+                choices=(
+                    ("", "Select option"),
+                    ("true", "Yes"),
+                    ("false", "No"),
+                ),
+                coerce=self._coerce_boolean_attribute_value,
+                empty_value=None,
+                widget=forms.Select(attrs={"class": "form-select"}),
+            )
+
+        return forms.CharField(
+            label=attribute.name,
+            required=attribute.required,
+            help_text=help_text,
+            widget=forms.TextInput(attrs={"class": "form-control", "placeholder": attribute.name}),
+        )
+
+    def _add_attribute_fields(self):
+        for attribute in self.category_attributes:
+            field_name = self.attribute_field_name(attribute.pk)
+            self.fields[field_name] = self._build_attribute_field(attribute)
+
+            if not self.is_bound:
+                self.fields[field_name].initial = self._get_attribute_initial_value(attribute)
+
+            self.dynamic_attribute_field_names.append(field_name)
+
+        self.dynamic_attribute_bound_fields = [self[field_name] for field_name in self.dynamic_attribute_field_names]
+
+    def _serialize_attribute_value(self, attribute, value):
+        if value in (None, ""):
+            return ""
+        if attribute.field_type == AssetAttribute.FIELD_DATE:
+            return value.isoformat()
+        if attribute.field_type == AssetAttribute.FIELD_BOOLEAN:
+            return "Yes" if value else "No"
+        return str(value)
 
     def clean_asset_tag(self):
         asset_tag = self.cleaned_data.get("asset_tag")
@@ -154,6 +304,8 @@ class AssetForm(forms.ModelForm):
         cleaned_data = super().clean()
         purchase_cost = cleaned_data.get("purchase_cost")
         purchase_date = cleaned_data.get("purchase_date")
+        category = cleaned_data.get("category")
+        selected_software = cleaned_data.get("software")
         useful_life_years = cleaned_data.get("useful_life_years")
         salvage_value = cleaned_data.get("salvage_value")
         depreciation_start_date = cleaned_data.get("depreciation_start_date")
@@ -194,6 +346,9 @@ class AssetForm(forms.ModelForm):
 
         if purchase_cost is not None and salvage_value > purchase_cost:
             self.add_error("salvage_value", "Salvage value cannot exceed purchase cost.")
+
+        if selected_software and (not category or not category.is_computer_category):
+            self.add_error("software", "Software can only be selected for computer assets.")
 
         return cleaned_data
 
@@ -236,6 +391,54 @@ class AssetForm(forms.ModelForm):
                     else "Location updated from asset form."
                 ),
             )
+
+        selected_software = list(self.cleaned_data.get("software") or [])
+
+        if asset.is_computer:
+            selected_software_by_id = {software.pk: software for software in selected_software}
+            selected_software = list(selected_software_by_id.values())
+            selected_software_ids = set(selected_software_by_id)
+            existing_installations = InstalledSoftware.objects.filter(asset=asset)
+            if selected_software_ids:
+                existing_installations.exclude(software_id__in=selected_software_ids).delete()
+            else:
+                existing_installations.delete()
+
+            for software in selected_software:
+                InstalledSoftware.objects.get_or_create(
+                    asset=asset,
+                    software=software,
+                    defaults={
+                        "installed_by": (
+                            self.user if getattr(self.user, "is_authenticated", False) else None
+                        ),
+                    },
+                )
+        else:
+            InstalledSoftware.objects.filter(asset=asset).delete()
+
+        selected_attribute_ids = {attribute.pk for attribute in self.category_attributes}
+        existing_attribute_values = AssetAttributeValue.objects.filter(asset=asset)
+        if selected_attribute_ids:
+            existing_attribute_values.exclude(attribute_id__in=selected_attribute_ids).delete()
+        else:
+            existing_attribute_values.delete()
+
+        for attribute in self.category_attributes:
+            field_name = self.attribute_field_name(attribute.pk)
+            serialized_value = self._serialize_attribute_value(
+                attribute,
+                self.cleaned_data.get(field_name),
+            )
+            if serialized_value:
+                AssetAttributeValue.objects.update_or_create(
+                    asset=asset,
+                    attribute=attribute,
+                    defaults={"value": serialized_value},
+                )
+            else:
+                AssetAttributeValue.objects.filter(asset=asset, attribute=attribute).delete()
+
         return asset
 
 
@@ -407,6 +610,17 @@ class LocationForm(forms.ModelForm):
             "description": forms.Textarea(
                 attrs={"class": "form-control", "rows": 4, "placeholder": "Location description"}
             ),
+        }
+
+
+class SoftwareForm(forms.ModelForm):
+    class Meta:
+        model = Software
+        fields = ["name", "version", "vendor"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Software name"}),
+            "version": forms.TextInput(attrs={"class": "form-control", "placeholder": "Version"}),
+            "vendor": forms.TextInput(attrs={"class": "form-control", "placeholder": "Vendor"}),
         }
 
 

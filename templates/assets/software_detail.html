@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-12">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <div>
+        <h4 class="mb-1">{{ software.name }}</h4>
+        <p class="text-muted mb-0">{{ software.version|default:"No version" }}{% if software.vendor %} - {{ software.vendor }}{% endif %}</p>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{% url 'assets:software_list' %}" class="btn btn-outline-secondary">Software Catalog</a>
+        {% if request.user.is_admin or request.user.is_technician %}
+        <a href="{% url 'assets:software_update' software.pk %}" class="btn btn-primary">Edit Software</a>
+        <a href="{% url 'assets:software_delete' software.pk %}" class="btn btn-outline-danger">Delete</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if messages %}
+  <div class="col-12">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="col-lg-4">
+    <div class="border rounded-3 bg-white p-4 h-100">
+      <p class="text-muted text-uppercase small mb-1">Installations</p>
+      <h5 class="mb-3">{{ software.installation_count }}</h5>
+      <p class="text-muted text-uppercase small mb-1">Version</p>
+      <p class="mb-3">{{ software.version|default:"-" }}</p>
+      <p class="text-muted text-uppercase small mb-1">Vendor</p>
+      <p class="mb-0">{{ software.vendor|default:"-" }}</p>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="border rounded-3 bg-white p-4 h-100">
+      <h5 class="mb-3">Software Details</h5>
+      <dl class="row mb-0">
+        <dt class="col-sm-4">Name</dt>
+        <dd class="col-sm-8">{{ software.name }}</dd>
+
+        <dt class="col-sm-4">Version</dt>
+        <dd class="col-sm-8">{{ software.version|default:"-" }}</dd>
+
+        <dt class="col-sm-4">Vendor</dt>
+        <dd class="col-sm-8">{{ software.vendor|default:"-" }}</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="border rounded-3 bg-white p-4">
+      <h5 class="mb-3">Installed On Assets</h5>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Category</th>
+              <th>Type</th>
+              <th>Installed Date</th>
+              <th>Installed By</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for installation in installations %}
+            <tr>
+              <td>
+                <strong>{{ installation.asset.asset_tag }}</strong><br>
+                <span class="text-muted">{{ installation.asset.name }}</span>
+              </td>
+              <td>{{ installation.asset.category }}</td>
+              <td>{{ installation.asset.asset_type.name }}</td>
+              <td>{{ installation.installed_date|default:"-" }}</td>
+              <td>{{ installation.installed_by|default:"-" }}</td>
+              <td class="text-end">
+                <a href="{% url 'assets:asset_detail' installation.asset.pk %}" class="btn btn-sm btn-outline-primary">View Asset</a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" class="text-center text-muted py-3">This software has not been assigned to any asset yet.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

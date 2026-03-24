@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-xl-8 col-lg-10">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h4 class="mb-1">{{ page_title }}</h4>
+        <p class="text-muted mb-0">Enter the software details below.</p>
+      </div>
+      {% if software %}
+      <a href="{% url 'assets:software_detail' software.pk %}" class="btn btn-outline-secondary">Close</a>
+      {% else %}
+      <a href="{% url 'assets:software_list' %}" class="btn btn-outline-secondary">Close</a>
+      {% endif %}
+    </div>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="border rounded-3 bg-white p-4">
+      <h5 class="mb-4">{{ action }} Software</h5>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger" role="alert">
+          {% for error in form.non_field_errors %}
+          <div>{{ error }}</div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="row g-3">
+          <div class="col-md-5">
+            <label class="form-label" for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+            {{ form.name }}
+            <div class="text-danger small">{{ form.name.errors }}</div>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="{{ form.version.id_for_label }}">{{ form.version.label }}</label>
+            {{ form.version }}
+            <div class="text-danger small">{{ form.version.errors }}</div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="{{ form.vendor.id_for_label }}">{{ form.vendor.label }}</label>
+            {{ form.vendor }}
+            <div class="text-danger small">{{ form.vendor.errors }}</div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+          <button type="submit" class="btn btn-primary">Save Software</button>
+          {% if software %}
+          <a href="{% url 'assets:software_detail' software.pk %}" class="btn btn-secondary">Close</a>
+          {% else %}
+          <a href="{% url 'assets:software_list' %}" class="btn btn-secondary">Close</a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

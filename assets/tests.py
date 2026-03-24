@@ -1,6 +1,7 @@
 from datetime import timedelta
 from decimal import Decimal
 
+from django import forms
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.test import TestCase
@@ -12,6 +13,8 @@ from assets.forms import AssetAssignmentForm, AssetForm
 from assets.models import (
     Asset,
     AssetAssignment,
+    AssetAttribute,
+    AssetAttributeValue,
     AssetCategory,
     AssetDepreciation,
     AssetLocationHistory,
@@ -204,9 +207,28 @@ class AssetCrudViewTests(TestCase):
             role="ADMIN",
         )
         self.category = AssetCategory.objects.get(name="Computers")
+        self.projector_category = AssetCategory.objects.get(name="Projectors")
         self.asset_type = AssetType.objects.create(category=self.category, name="Laptop")
+        self.projector_type = AssetType.objects.create(category=self.projector_category, name="Projector")
         self.location = Location.objects.create(name="ICT Store")
         self.second_location = Location.objects.create(name="Lab 2")
+        self.software_one = Software.objects.create(name="Microsoft Office", version="2024")
+        self.software_two = Software.objects.create(name="VLC", version="3.0")
+        self.processor_attribute = AssetAttribute.objects.create(
+            category=self.category,
+            name="Processor",
+            field_type=AssetAttribute.FIELD_TEXT,
+        )
+        self.antivirus_attribute = AssetAttribute.objects.create(
+            category=self.category,
+            name="Antivirus Installed",
+            field_type=AssetAttribute.FIELD_BOOLEAN,
+        )
+        self.projector_attribute = AssetAttribute.objects.create(
+            category=self.projector_category,
+            name="Lumens",
+            field_type=AssetAttribute.FIELD_NUMBER,
+        )
         self.asset = Asset.objects.create(
             asset_tag="ASSET-100",
             name="Demo Laptop",
@@ -231,6 +253,54 @@ class AssetCrudViewTests(TestCase):
         self.assertIn("purchase", form.fields)
         self.assertEqual(form._meta.model, Asset)
         self.assertEqual(form["location"].value(), self.location.pk)
+
+    def test_asset_form_includes_selected_software_for_computer_assets(self):
+        InstalledSoftware.objects.create(asset=self.asset, software=self.software_one, installed_by=self.user)
+
+        form = AssetForm(instance=self.asset, user=self.user)
+
+        self.assertIn("software", form.fields)
+        self.assertTrue(form.show_software_field)
+        self.assertIsInstance(form.fields["software"].widget, forms.MultipleHiddenInput)
+        self.assertEqual([software.pk for software in form.selected_software_options], [self.software_one.pk])
+        self.assertCountEqual(
+            [software.pk for software in form.available_software_options],
+            [self.software_two.pk],
+        )
+        self.assertCountEqual(
+            [int(value) for value in form["software"].value()],
+            [self.software_one.pk],
+        )
+
+    def test_asset_update_view_renders_add_selected_software_button(self):
+        response = self.client.get(reverse("assets:asset_update", args=[self.asset.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Add Selected Software")
+        self.assertContains(response, "Software Added To This Asset")
+        self.assertContains(response, "data-software-source-input")
+
+    def test_asset_form_includes_existing_attribute_values_for_category(self):
+        AssetAttributeValue.objects.create(
+            asset=self.asset,
+            attribute=self.processor_attribute,
+            value="Intel Core i7",
+        )
+        AssetAttributeValue.objects.create(
+            asset=self.asset,
+            attribute=self.antivirus_attribute,
+            value="Yes",
+        )
+
+        form = AssetForm(instance=self.asset, user=self.user)
+        processor_field_name = AssetForm.attribute_field_name(self.processor_attribute.pk)
+        antivirus_field_name = AssetForm.attribute_field_name(self.antivirus_attribute.pk)
+
+        self.assertIn(processor_field_name, form.fields)
+        self.assertIn(antivirus_field_name, form.fields)
+        self.assertTrue(form.show_attribute_fields)
+        self.assertEqual(form[processor_field_name].value(), "Intel Core i7")
+        self.assertEqual(form[antivirus_field_name].value(), "true")
 
     def test_asset_create_view_creates_asset(self):
         response = self.client.post(
@@ -269,6 +339,118 @@ class AssetCrudViewTests(TestCase):
         self.assertEqual(depreciation.salvage_value, Decimal("0.00"))
         self.assertEqual(str(depreciation.start_date), "2026-03-13")
 
+    def test_asset_create_view_saves_selected_software_for_computer_asset(self):
+        response = self.client.post(
+            reverse("assets:asset_create"),
+            data={
+                "asset_tag": "ASSET-101A",
+                "name": "Software Laptop",
+                "category": self.category.pk,
+                "asset_type": self.asset_type.pk,
+                "serial_number": "SER-101A",
+                "department": self.department.pk,
+                "location": self.location.pk,
+                "software": [self.software_one.pk, self.software_two.pk],
+                "purchase": "",
+                "purchase_date": "",
+                "purchase_cost": "",
+                "warranty_expiry": "",
+                "status": Asset.STATUS_AVAILABLE,
+                "is_active": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        asset = Asset.objects.get(asset_tag="ASSET-101A")
+        self.assertCountEqual(
+            InstalledSoftware.objects.filter(asset=asset).values_list("software_id", flat=True),
+            [self.software_one.pk, self.software_two.pk],
+        )
+        self.assertTrue(
+            InstalledSoftware.objects.filter(
+                asset=asset,
+                software=self.software_one,
+                installed_by=self.user,
+            ).exists()
+        )
+
+    def test_asset_detail_view_shows_installed_software_selected_on_asset(self):
+        InstalledSoftware.objects.create(
+            asset=self.asset,
+            software=self.software_one,
+            installed_by=self.user,
+        )
+        InstalledSoftware.objects.create(
+            asset=self.asset,
+            software=self.software_two,
+            installed_by=self.user,
+        )
+
+        response = self.client.get(reverse("assets:asset_detail", args=[self.asset.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Installed Software")
+        self.assertContains(response, str(self.software_one))
+        self.assertContains(response, str(self.software_two))
+
+    def test_asset_detail_view_shows_all_selected_software_for_asset(self):
+        software_items = [
+            Software.objects.create(name=f"Tool {index:02d}")
+            for index in range(11)
+        ]
+        for software in software_items:
+            InstalledSoftware.objects.create(
+                asset=self.asset,
+                software=software,
+                installed_by=self.user,
+            )
+
+        response = self.client.get(reverse("assets:asset_detail", args=[self.asset.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Tool 00")
+        self.assertContains(response, "Tool 10")
+
+    def test_asset_create_view_saves_category_attributes_for_computer_asset(self):
+        response = self.client.post(
+            reverse("assets:asset_create"),
+            data={
+                "asset_tag": "ASSET-101B",
+                "name": "Configured Laptop",
+                "category": self.category.pk,
+                "asset_type": self.asset_type.pk,
+                "serial_number": "SER-101B",
+                "department": self.department.pk,
+                "location": self.location.pk,
+                "software": [self.software_one.pk],
+                AssetForm.attribute_field_name(self.processor_attribute.pk): "Intel Core i5",
+                AssetForm.attribute_field_name(self.antivirus_attribute.pk): "true",
+                "purchase": "",
+                "purchase_date": "",
+                "purchase_cost": "",
+                "warranty_expiry": "",
+                "status": Asset.STATUS_AVAILABLE,
+                "is_active": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        asset = Asset.objects.get(asset_tag="ASSET-101B")
+        self.assertTrue(
+            AssetAttributeValue.objects.filter(
+                asset=asset,
+                attribute=self.processor_attribute,
+                value="Intel Core i5",
+            ).exists()
+        )
+        self.assertTrue(
+            AssetAttributeValue.objects.filter(
+                asset=asset,
+                attribute=self.antivirus_attribute,
+                value="Yes",
+            ).exists()
+        )
+
     def test_asset_update_view_updates_asset(self):
         AssetLocationHistory.objects.create(asset=self.asset, location=self.location, moved_by=self.user)
 
@@ -296,6 +478,39 @@ class AssetCrudViewTests(TestCase):
         self.assertEqual(self.asset.name, "Updated Laptop")
         self.assertEqual(self.asset.status, Asset.STATUS_ASSIGNED)
         self.assertEqual(self.asset.current_location, self.second_location)
+
+    def test_asset_update_clears_software_when_category_changes_from_computer(self):
+        InstalledSoftware.objects.create(asset=self.asset, software=self.software_one, installed_by=self.user)
+        AssetAttributeValue.objects.create(
+            asset=self.asset,
+            attribute=self.processor_attribute,
+            value="Intel Core i7",
+        )
+
+        response = self.client.post(
+            reverse("assets:asset_update", args=[self.asset.pk]),
+            data={
+                "asset_tag": self.asset.asset_tag,
+                "name": self.asset.name,
+                "category": self.projector_category.pk,
+                "asset_type": self.projector_type.pk,
+                "serial_number": self.asset.serial_number,
+                "department": self.department.pk,
+                "location": self.location.pk,
+                "purchase": "",
+                "purchase_date": "",
+                "purchase_cost": "",
+                "warranty_expiry": "",
+                "status": Asset.STATUS_AVAILABLE,
+                "is_active": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.asset.refresh_from_db()
+        self.assertEqual(self.asset.category, self.projector_category)
+        self.assertFalse(InstalledSoftware.objects.filter(asset=self.asset).exists())
+        self.assertFalse(AssetAttributeValue.objects.filter(asset=self.asset).exists())
 
     def test_asset_update_view_updates_depreciation_record(self):
         response = self.client.post(
@@ -358,7 +573,112 @@ class AssetCrudViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Laptop")
+        self.assertContains(response, "Installed Software")
+        self.assertContains(response, "Processor")
+        self.assertContains(response, "Antivirus Installed")
         self.assertNotContains(response, "Laser Printer")
+        self.assertNotContains(response, "Lumens")
+
+
+class SoftwareCrudViewTests(TestCase):
+    def setUp(self):
+        self.department = Department.objects.create(name="ICT", code="ICT")
+        self.admin = get_user_model().objects.create_user(
+            email="software-admin@example.com",
+            password="password123",
+            first_name="Software",
+            last_name="Admin",
+            role="ADMIN",
+        )
+        self.department_user = get_user_model().objects.create_user(
+            email="software-user@example.com",
+            password="password123",
+            first_name="Software",
+            last_name="User",
+            role="DEPARTMENT_USER",
+        )
+        self.category = AssetCategory.objects.get(name="Computers")
+        self.asset_type = AssetType.objects.create(category=self.category, name="Desktop")
+        self.asset = Asset.objects.create(
+            asset_tag="ASSET-SW-001",
+            name="Software Desktop",
+            category=self.category,
+            asset_type=self.asset_type,
+            department=self.department,
+        )
+        self.software = Software.objects.create(name="Windows 11", version="23H2", vendor="Microsoft")
+        self.client.force_login(self.admin)
+
+    def test_software_list_view_renders(self):
+        response = self.client.get(reverse("assets:software_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Software Catalog")
+        self.assertContains(response, "Windows 11")
+
+    def test_software_detail_view_shows_installations(self):
+        InstalledSoftware.objects.create(
+            asset=self.asset,
+            software=self.software,
+            installed_by=self.admin,
+        )
+
+        response = self.client.get(reverse("assets:software_detail", args=[self.software.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Installed On Assets")
+        self.assertContains(response, self.asset.asset_tag)
+
+    def test_software_create_view_creates_software(self):
+        response = self.client.post(
+            reverse("assets:software_create"),
+            data={
+                "name": "LibreOffice",
+                "version": "24.2",
+                "vendor": "The Document Foundation",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Software.objects.filter(name="LibreOffice", version="24.2").exists())
+
+    def test_software_update_view_updates_software(self):
+        response = self.client.post(
+            reverse("assets:software_update", args=[self.software.pk]),
+            data={
+                "name": "Windows 11 Pro",
+                "version": "24H2",
+                "vendor": "Microsoft",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.software.refresh_from_db()
+        self.assertEqual(self.software.name, "Windows 11 Pro")
+        self.assertEqual(self.software.version, "24H2")
+
+    def test_software_delete_view_removes_software_and_installations(self):
+        InstalledSoftware.objects.create(
+            asset=self.asset,
+            software=self.software,
+            installed_by=self.admin,
+        )
+
+        get_response = self.client.get(reverse("assets:software_delete", args=[self.software.pk]))
+        self.assertEqual(get_response.status_code, 200)
+
+        post_response = self.client.post(reverse("assets:software_delete", args=[self.software.pk]))
+
+        self.assertEqual(post_response.status_code, 302)
+        self.assertFalse(Software.objects.filter(pk=self.software.pk).exists())
+        self.assertFalse(InstalledSoftware.objects.filter(asset=self.asset).exists())
+
+    def test_department_user_cannot_create_software(self):
+        self.client.force_login(self.department_user)
+
+        response = self.client.get(reverse("assets:software_create"))
+
+        self.assertEqual(response.status_code, 403)
 
 
 class LocationCrudViewTests(TestCase):
@@ -551,6 +871,7 @@ class AssetAssignmentCrudViewTests(TestCase):
             purpose="Office work",
             condition_at_issue="Good",
         )
+        returned_date = assignment.assigned_date + timedelta(days=1)
 
         response = self.client.post(
             reverse("assets:assignment_update", args=[assignment.pk]),
@@ -561,7 +882,7 @@ class AssetAssignmentCrudViewTests(TestCase):
                 "assignee_contact": "0700000001",
                 "assigned_date": str(assignment.assigned_date),
                 "expected_return": str(assignment.expected_return),
-                "returned_date": "2026-03-20",
+                "returned_date": str(returned_date),
                 "issued_by": self.admin.pk,
                 "purpose": "Returned after project",
                 "condition_at_issue": "Good",
@@ -575,7 +896,7 @@ class AssetAssignmentCrudViewTests(TestCase):
         self.assertEqual(assignment.purpose, "Returned after project")
         self.assertEqual(assignment.assignee_contact, "0700000001")
         self.assertEqual(assignment.condition_at_return, "Fair")
-        self.assertEqual(str(assignment.returned_date), "2026-03-20")
+        self.assertEqual(assignment.returned_date, returned_date)
         self.asset.refresh_from_db()
         self.assertEqual(self.asset.status, Asset.STATUS_AVAILABLE)
 
@@ -669,6 +990,7 @@ class MaintenanceCrudViewTests(TestCase):
             status=MaintenanceRecord.STATUS_OPEN,
             technician="Maintenance Admin",
         )
+        end_date = record.start_date + timedelta(days=1)
 
         response = self.client.post(
             reverse("assets:maintenance_update", args=[record.pk]),
@@ -677,7 +999,7 @@ class MaintenanceCrudViewTests(TestCase):
                 "issue_description": "Battery replaced",
                 "maintenance_type": MaintenanceRecord.TYPE_REPAIR,
                 "start_date": str(record.start_date),
-                "end_date": "2026-03-20",
+                "end_date": str(end_date),
                 "technician": "Maintenance Admin",
                 "cost": "200.00",
                 "status": MaintenanceRecord.STATUS_COMPLETED,
@@ -708,6 +1030,7 @@ class MaintenanceCrudViewTests(TestCase):
             status=MaintenanceRecord.STATUS_IN_PROGRESS,
             technician="Maintenance Admin",
         )
+        end_date = record.start_date + timedelta(days=1)
 
         response = self.client.post(
             reverse("assets:maintenance_update", args=[record.pk]),
@@ -716,7 +1039,7 @@ class MaintenanceCrudViewTests(TestCase):
                 "issue_description": "Operating system reinstalled",
                 "maintenance_type": MaintenanceRecord.TYPE_UPGRADE,
                 "start_date": str(record.start_date),
-                "end_date": "2026-03-21",
+                "end_date": str(end_date),
                 "technician": "Maintenance Admin",
                 "cost": "",
                 "status": MaintenanceRecord.STATUS_COMPLETED,

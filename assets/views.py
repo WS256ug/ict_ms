@@ -11,7 +11,14 @@ from django.views.decorators.http import require_http_methods
 
 from core.decorators import admin_or_technician_required, admin_required
 
-from .forms import AssetAssignmentForm, AssetFilterForm, AssetForm, LocationForm, MaintenanceRecordForm
+from .forms import (
+    AssetAssignmentForm,
+    AssetFilterForm,
+    AssetForm,
+    LocationForm,
+    MaintenanceRecordForm,
+    SoftwareForm,
+)
 from .models import (
     Asset,
     AssetAssignment,
@@ -20,6 +27,7 @@ from .models import (
     AssetType,
     Location,
     MaintenanceRecord,
+    Software,
 )
 
 
@@ -113,7 +121,7 @@ def asset_detail(request, pk):
         "location_history": asset.location_history.select_related("location", "moved_by")[:10],
         "assignments": asset.assignments.select_related("issued_by")[:10],
         "maintenance_records": asset.maintenance_records.all()[:10],
-        "installed_software": asset.installed_software.select_related("software", "installed_by")[:10],
+        "installed_software": asset.installed_software.select_related("software", "installed_by"),
         "attribute_values": asset.attribute_values.select_related("attribute")[:10],
         "activity_logs": asset.activity_logs.select_related("performed_by")[:10],
     }
@@ -150,19 +158,18 @@ def asset_create(request):
 @login_required
 @admin_or_technician_required
 def asset_type_field(request):
-    category_id = request.GET.get("category")
-    selected_asset_type_id = request.GET.get("asset_type")
-    asset_types = AssetType.objects.none()
+    asset = None
+    asset_id = request.GET.get("asset_instance_id")
+    if asset_id:
+        asset = Asset.objects.filter(pk=asset_id).first()
 
-    if category_id:
-        asset_types = AssetType.objects.filter(category_id=category_id).order_by("name")
+    form = AssetForm(request.GET or None, instance=asset, user=request.user)
 
     return render(
         request,
-        "assets/partials/asset_type_field.html",
+        "assets/partials/asset_category_fields.html",
         {
-            "asset_types": asset_types,
-            "selected_asset_type_id": str(selected_asset_type_id or ""),
+            "form": form,
         },
     )
 # End asset_type_field view
@@ -233,6 +240,150 @@ def asset_qr_code(request, pk):
     response["Content-Disposition"] = f'inline; filename="{asset.asset_tag}_qr.png"'
     return response
 # End asset_qr_code view
+
+
+# Begin software_list view
+@login_required
+def software_list(request):
+    software_items = Software.objects.annotate(
+        installation_count=Count("installations", distinct=True)
+    )
+    search = request.GET.get("search", "").strip()
+
+    if search:
+        software_items = software_items.filter(
+            Q(name__icontains=search)
+            | Q(version__icontains=search)
+            | Q(vendor__icontains=search)
+        )
+
+    paginator = Paginator(software_items.order_by("name", "version", "vendor"), 15)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    filter_querystring = request.GET.copy()
+    filter_querystring.pop("page", None)
+
+    context = {
+        "page_obj": page_obj,
+        "search": search,
+        "filter_querystring": filter_querystring,
+        "stats": {
+            "total": Software.objects.count(),
+            "in_use": Software.objects.filter(installations__isnull=False).distinct().count(),
+            "unused": Software.objects.filter(installations__isnull=True).count(),
+        },
+    }
+    return render(request, "assets/software_list.html", context)
+
+
+# End software_list view
+
+
+# Begin software_detail view
+@login_required
+def software_detail(request, pk):
+    software = get_object_or_404(
+        Software.objects.annotate(installation_count=Count("installations", distinct=True)),
+        pk=pk,
+    )
+    installations = software.installations.select_related(
+        "asset",
+        "installed_by",
+        "asset__category",
+        "asset__asset_type",
+    ).order_by("asset__asset_tag")
+    return render(
+        request,
+        "assets/software_detail.html",
+        {
+            "software": software,
+            "installations": installations[:20],
+        },
+    )
+
+
+# End software_detail view
+
+
+# Begin software_create view
+@login_required
+@admin_or_technician_required
+def software_create(request):
+    if request.method == "POST":
+        form = SoftwareForm(request.POST)
+        if form.is_valid():
+            software = form.save()
+            messages.success(request, f"Software {software} created successfully.")
+            return redirect("assets:software_detail", pk=software.pk)
+    else:
+        form = SoftwareForm()
+
+    return render(
+        request,
+        "assets/software_form.html",
+        {
+            "form": form,
+            "action": "Create",
+            "page_title": "Create Software",
+        },
+    )
+
+
+# End software_create view
+
+
+# Begin software_update view
+@login_required
+@admin_or_technician_required
+def software_update(request, pk):
+    software = get_object_or_404(Software, pk=pk)
+    if request.method == "POST":
+        form = SoftwareForm(request.POST, instance=software)
+        if form.is_valid():
+            software = form.save()
+            messages.success(request, f"Software {software} updated successfully.")
+            return redirect("assets:software_detail", pk=software.pk)
+    else:
+        form = SoftwareForm(instance=software)
+
+    return render(
+        request,
+        "assets/software_form.html",
+        {
+            "form": form,
+            "software": software,
+            "action": "Update",
+            "page_title": f"Update {software}",
+        },
+    )
+
+
+# End software_update view
+
+
+# Begin software_delete view
+@login_required
+@admin_or_technician_required
+@require_http_methods(["GET", "POST"])
+def software_delete(request, pk):
+    software = get_object_or_404(
+        Software.objects.annotate(installation_count=Count("installations", distinct=True)),
+        pk=pk,
+    )
+
+    if request.method == "POST":
+        software_label = str(software)
+        software.delete()
+        messages.success(request, f"Software {software_label} deleted successfully.")
+        return redirect("assets:software_list")
+
+    return render(
+        request,
+        "assets/software_confirm_delete.html",
+        {"software": software},
+    )
+
+
+# End software_delete view
 
 
 # Begin category_list view
