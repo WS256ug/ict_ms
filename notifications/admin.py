@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils import timezone
 from django.utils.html import format_html
 
-from .models import Alert, Notification
+from .models import Alert, Notification, SMSNotificationLog
 
 
 @admin.register(Notification)
@@ -94,3 +94,42 @@ class AlertAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("asset", "acknowledged_by")
+
+
+@admin.register(SMSNotificationLog)
+class SMSNotificationLogAdmin(admin.ModelAdmin):
+    list_display = (
+        "event_type",
+        "phone_number",
+        "recipient",
+        "status",
+        "provider_message_id",
+        "notification_date",
+        "created_at",
+    )
+    list_filter = ("event_type", "status", "notification_date", "created_at")
+    search_fields = (
+        "phone_number",
+        "message",
+        "provider_message_id",
+        "recipient__email",
+        "recipient__first_name",
+        "recipient__last_name",
+        "error_message",
+    )
+    readonly_fields = (
+        "event_type",
+        "content_type",
+        "object_id",
+        "recipient",
+        "phone_number",
+        "message",
+        "status",
+        "provider_message_id",
+        "provider_response",
+        "error_message",
+        "notification_date",
+        "created_at",
+    )
+    list_select_related = ("recipient", "content_type")
+    date_hierarchy = "created_at"

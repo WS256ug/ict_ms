@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -245,3 +246,21 @@ JAZZMIN_UI_TWEAKS = {
     },
     "actions_sticky_top": False,
 }
+
+
+def _env_bool(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+EASY_SEND_SMS_ENABLED = _env_bool("EASY_SEND_SMS_ENABLED", default=False)
+EASY_SEND_SMS_API_KEY = os.getenv("EASY_SEND_SMS_API_KEY") or os.getenv("EASYSENDSMS_API_KEY", "")
+EASY_SEND_SMS_SENDER_ID = os.getenv("EASY_SEND_SMS_SENDER_ID", "")
+EASY_SEND_SMS_BASE_URL = os.getenv(
+    "EASY_SEND_SMS_BASE_URL",
+    "https://restapi.easysendsms.app/v1/rest/sms/send",
+)
+EASY_SEND_SMS_TIMEOUT = int(os.getenv("EASY_SEND_SMS_TIMEOUT", "15"))
+EASY_SEND_SMS_DEFAULT_COUNTRY_CODE = os.getenv("EASY_SEND_SMS_DEFAULT_COUNTRY_CODE", "")
