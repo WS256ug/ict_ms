@@ -20,6 +20,7 @@ urlpatterns = [
     path('login/', login_view, name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
     path('dashboard/', landing_page, name='dashboard'),
+    path('iot/', include('iot_monitoring.urls')),
     path('users/', include('accounts.urls')),
     path('assets/', include('assets.urls')),
     path('tickets/', include('tickets.urls')),

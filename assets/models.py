@@ -10,41 +10,31 @@ from django.utils import timezone
 from accounts.models import Department
 
 
-ASSET_CATEGORY_COMPUTERS = "Computers"
-ASSET_CATEGORY_NETWORKING = "Networking"
-ASSET_CATEGORY_FURNITURE = "Furniture"
-ASSET_CATEGORY_PRINTERS = "Printers"
-ASSET_CATEGORY_CONSUMABLES = "Consumables"
-ASSET_CATEGORY_PROJECTORS = "Projectors"
-ASSET_CATEGORY_OTHERS = "Others"
+# ASSET_CATEGORY_COMPUTERS = "Computers"
+# ASSET_CATEGORY_NETWORKING = "Networking"
+# ASSET_CATEGORY_FURNITURE = "Furniture"
+# ASSET_CATEGORY_PRINTERS = "Printers"
+# ASSET_CATEGORY_CONSUMABLES = "Consumables"
+# ASSET_CATEGORY_PROJECTORS = "Projectors"
+# ASSET_CATEGORY_OTHERS = "Others"
 
-ASSET_CATEGORY_NAMES = (
-    ASSET_CATEGORY_COMPUTERS,
-    ASSET_CATEGORY_NETWORKING,
-    ASSET_CATEGORY_FURNITURE,
-    ASSET_CATEGORY_PRINTERS,
-    ASSET_CATEGORY_CONSUMABLES,
-    ASSET_CATEGORY_PROJECTORS,
-    ASSET_CATEGORY_OTHERS,
-)
+# ASSET_CATEGORY_NAMES = (
+#     ASSET_CATEGORY_COMPUTERS,
+#     ASSET_CATEGORY_NETWORKING,
+#     ASSET_CATEGORY_FURNITURE,
+#     ASSET_CATEGORY_PRINTERS,
+#     ASSET_CATEGORY_CONSUMABLES,
+#     ASSET_CATEGORY_PROJECTORS,
+#     ASSET_CATEGORY_OTHERS,
+# )
 
-ASSET_CATEGORY_CHOICES = tuple((name, name) for name in ASSET_CATEGORY_NAMES)
+# ASSET_CATEGORY_CHOICES = tuple((name, name) for name in ASSET_CATEGORY_NAMES)
 
 
 # Begin AssetCategoryQuerySet class
 class AssetCategoryQuerySet(models.QuerySet):
     def ordered_choices(self):
-        return self.order_by(
-            Case(
-                *[
-                    When(name=name, then=Value(index))
-                    for index, name in enumerate(ASSET_CATEGORY_NAMES)
-                ],
-                default=Value(len(ASSET_CATEGORY_NAMES)),
-                output_field=IntegerField(),
-            ),
-            "name",
-        )
+        return self.order_by("name")
 # End AssetCategoryQuerySet class
 
 
@@ -52,12 +42,9 @@ class AssetCategoryQuerySet(models.QuerySet):
 class AssetCategory(models.Model):
     objects = AssetCategoryQuerySet.as_manager()
 
-    name = models.CharField(
-        max_length=100,
-        unique=True,
-        choices=ASSET_CATEGORY_CHOICES,
-    )
+    name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
+    is_computer_category = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["name"]
@@ -69,25 +56,10 @@ class AssetCategory(models.Model):
 
     def clean(self):
         super().clean()
-        if self.name and self.name not in dict(ASSET_CATEGORY_CHOICES):
-            raise ValidationError(
-                {
-                    "name": (
-                        "Category must be one of: "
-                        + ", ".join(ASSET_CATEGORY_NAMES)
-                        + "."
-                    )
-                }
-            )
 
     def save(self, *args, **kwargs):
         self.full_clean()
         return super().save(*args, **kwargs)
-
-    @property
-    def is_computer_category(self):
-        return self.name == ASSET_CATEGORY_COMPUTERS
-# End AssetCategory model
 
 
 # Begin AssetType model
@@ -556,7 +528,12 @@ class AssetDepreciation(models.Model):
     )
     purchase_cost = models.DecimalField(max_digits=12, decimal_places=2)
     useful_life_years = models.PositiveIntegerField()
-    salvage_value = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    salvage_value = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name="End-of-Life Value",
+    )
     depreciation_method = models.CharField(
         max_length=50,
         choices=METHOD_CHOICES,
@@ -572,7 +549,7 @@ class AssetDepreciation(models.Model):
 
     def clean(self):
         if self.salvage_value > self.purchase_cost:
-            raise ValidationError({"salvage_value": "Salvage value cannot exceed purchase cost."})
+            raise ValidationError({"salvage_value": "End-of-Life Value cannot exceed purchase cost."})
         if self.useful_life_years < 1:
             raise ValidationError({"useful_life_years": "Useful life must be at least 1 year."})
 

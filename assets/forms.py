@@ -7,7 +7,6 @@ from django.utils.dateparse import parse_date
 from accounts.models import Department
 
 from .models import (
-    ASSET_CATEGORY_COMPUTERS,
     Asset,
     AssetAssignment,
     AssetAttribute,
@@ -46,12 +45,13 @@ class AssetForm(forms.ModelForm):
         ),
     )
     salvage_value = forms.DecimalField(
+        label="End-of-Life Value",
         required=False,
         min_value=Decimal("0.00"),
         max_digits=12,
         decimal_places=2,
         widget=forms.NumberInput(
-            attrs={"class": "form-control", "placeholder": "Salvage value", "step": "0.01"}
+            attrs={"class": "form-control", "placeholder": "End-of-Life Value", "step": "0.01"}
         ),
     )
     depreciation_start_date = forms.DateField(
@@ -120,7 +120,7 @@ class AssetForm(forms.ModelForm):
             "Straight-line depreciation is calculated automatically using the asset purchase cost."
         )
         self.computer_category_id = (
-            AssetCategory.objects.filter(name=ASSET_CATEGORY_COMPUTERS)
+            AssetCategory.objects.filter(is_computer_category=True)
             .values_list("pk", flat=True)
             .first()
         )
@@ -345,7 +345,7 @@ class AssetForm(forms.ModelForm):
             self.add_error("useful_life_years", "Enter the asset useful life in years.")
 
         if purchase_cost is not None and salvage_value > purchase_cost:
-            self.add_error("salvage_value", "Salvage value cannot exceed purchase cost.")
+            self.add_error("salvage_value", "End-of-Life Value cannot exceed purchase cost.")
 
         if selected_software and (not category or not category.is_computer_category):
             self.add_error("software", "Software can only be selected for computer assets.")

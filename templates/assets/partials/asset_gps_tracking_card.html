@@ -1,0 +1,53 @@
+<div
+  id="asset-gps-tracking-card"
+  hx-get="{% url 'assets:asset_gps_tracking_card' asset.pk %}"
+  hx-trigger="every 20s"
+  hx-swap="outerHTML"
+>
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center gap-2">
+      <h5 class="mb-0">GPS Tracking</h5>
+      <span class="badge text-bg-light">Auto-refresh 20s</span>
+    </div>
+    <div class="card-body">
+      {% if gps_tracker %}
+      <dl class="row mb-3">
+        <dt class="col-5">Device ID</dt>
+        <dd class="col-7">{{ gps_tracker.device_id }}</dd>
+        <dt class="col-5">Last Seen</dt>
+        <dd class="col-7">{{ gps_tracker.last_seen_at|default:"-" }}</dd>
+        <dt class="col-5">Tracker Active</dt>
+        <dd class="col-7">{{ gps_tracker.is_active|yesno:"Yes,No" }}</dd>
+        {% if latest_gps_reading %}
+        <dt class="col-5">Latitude</dt>
+        <dd class="col-7">{{ latest_gps_reading.latitude }}</dd>
+        <dt class="col-5">Longitude</dt>
+        <dd class="col-7">{{ latest_gps_reading.longitude }}</dd>
+        <dt class="col-5">Recorded</dt>
+        <dd class="col-7">{{ latest_gps_reading.recorded_at }}</dd>
+        <dt class="col-5">Accuracy</dt>
+        <dd class="col-7">{{ latest_gps_reading.accuracy_meters|default:"-" }}</dd>
+        <dt class="col-5">Battery</dt>
+        <dd class="col-7">
+          {% if latest_gps_reading.battery_level or latest_gps_reading.battery_level == 0 %}
+          {{ latest_gps_reading.battery_level }}%
+          {% else %}
+          -
+          {% endif %}
+        </dd>
+        {% endif %}
+      </dl>
+      {% if gps_map_url %}
+      <a href="{{ gps_map_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
+        View On Map
+      </a>
+      {% endif %}
+      {% if not latest_gps_reading %}
+      <p class="text-muted mb-0">Tracker is linked, but no GPS readings have been received yet.</p>
+      {% endif %}
+      {% else %}
+      <p class="text-muted mb-0">No GPS tracker is linked to this asset yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>

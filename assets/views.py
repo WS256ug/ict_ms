@@ -35,6 +35,41 @@ def _is_htmx(request):
     return request.headers.get("HX-Request") == "true"
 
 
+def _asset_gps_context(asset):
+    gps_tracker = asset.tracker_devices.filter(is_active=True).order_by("device_id").first()
+    recent_gps_readings = list(gps_tracker.gps_readings.all()[:10]) if gps_tracker else []
+    latest_gps_reading = recent_gps_readings[0] if recent_gps_readings else None
+    gps_map_points = []
+
+    for reading in reversed(recent_gps_readings):
+        gps_map_points.append(
+            {
+                "latitude": float(reading.latitude),
+                "longitude": float(reading.longitude),
+                "recorded_at": reading.recorded_at.isoformat(),
+                "accuracy_meters": reading.accuracy_meters,
+                "speed_kmh": reading.speed_kmh,
+                "battery_level": reading.battery_level,
+            }
+        )
+
+    gps_map_url = None
+    if latest_gps_reading:
+        gps_map_url = (
+            "https://www.openstreetmap.org/?mlat="
+            f"{latest_gps_reading.latitude}&mlon={latest_gps_reading.longitude}"
+            f"#map=16/{latest_gps_reading.latitude}/{latest_gps_reading.longitude}"
+        )
+
+    return {
+        "gps_tracker": gps_tracker,
+        "latest_gps_reading": latest_gps_reading,
+        "recent_gps_readings": recent_gps_readings,
+        "gps_map_points": gps_map_points,
+        "gps_map_url": gps_map_url,
+    }
+
+
 # Begin asset_list view
 @login_required
 def asset_list(request):
@@ -125,8 +160,23 @@ def asset_detail(request, pk):
         "attribute_values": asset.attribute_values.select_related("attribute")[:10],
         "activity_logs": asset.activity_logs.select_related("performed_by")[:10],
     }
+    context.update(_asset_gps_context(asset))
     return render(request, "assets/asset_detail.html", context)
 # End asset_detail view
+
+
+@login_required
+def asset_gps_tracking_card(request, pk):
+    asset = get_object_or_404(Asset, pk=pk)
+    context = {"asset": asset, **_asset_gps_context(asset)}
+    return render(request, "assets/partials/asset_gps_tracking_card.html", context)
+
+
+@login_required
+def asset_gps_map_panel(request, pk):
+    asset = get_object_or_404(Asset, pk=pk)
+    context = {"asset": asset, **_asset_gps_context(asset)}
+    return render(request, "assets/partials/asset_gps_map_panel.html", context)
 
 
 # Begin asset_create view

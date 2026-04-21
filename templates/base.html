@@ -47,6 +47,7 @@
 <!-- [Template CSS Files] -->
 <link rel="stylesheet" href="{% static 'assets/css/style.css' %}" id="main-style-link" />
 <link rel="stylesheet" href="{% static 'assets/css/style-preset.css' %}" />
+{% block extra_head %}{% endblock %}
 <!-- [Vite Development Scripts] -->
 <!-- Development script removed for production -->
 
@@ -1086,6 +1087,7 @@
 <script>
   layout_theme_sidebar_change('false');
 </script>
+{% block extra_js %}{% endblock %}
 
   </body>
   <!-- [Body] end -->

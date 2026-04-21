@@ -1,0 +1,76 @@
+<div
+  id="asset-gps-map-panel"
+  hx-get="{% url 'assets:asset_gps_map_panel' asset.pk %}"
+  hx-trigger="every 20s"
+  hx-swap="outerHTML"
+>
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center gap-2">
+      <div>
+        <h5 class="mb-1">GPS Map</h5>
+        <p class="text-muted mb-0 gps-map-status">Latest position with recent movement path.</p>
+      </div>
+      {% if gps_map_url %}
+      <a href="{{ gps_map_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
+        Open Full Map
+      </a>
+      {% endif %}
+    </div>
+    <div class="card-body asset-gps-map-panel-body">
+      {% if recent_gps_readings %}
+      <div class="asset-gps-map-shell">
+        <div id="asset-gps-map" class="asset-gps-map" aria-label="Asset GPS map"></div>
+      </div>
+      {{ gps_map_points|json_script:"asset-gps-map-points" }}
+      {% else %}
+      <div class="asset-gps-map-empty d-flex flex-column justify-content-center align-items-center text-center px-4">
+        <h6 class="mb-2">No GPS points to plot yet</h6>
+        <p class="text-muted mb-0">Once the tracker sends coordinates, the latest location and movement path will appear here.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center gap-2">
+      <h5 class="mb-0">Recent GPS Readings</h5>
+      <span class="badge text-bg-light">Auto-refresh 20s</span>
+    </div>
+    <div class="card-body table-border-style">
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Recorded</th>
+              <th>Latitude</th>
+              <th>Longitude</th>
+              <th>Accuracy</th>
+              <th>Speed</th>
+              <th>Battery</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for reading in recent_gps_readings %}
+            <tr>
+              <td>{{ reading.recorded_at }}</td>
+              <td>{{ reading.latitude }}</td>
+              <td>{{ reading.longitude }}</td>
+              <td>{{ reading.accuracy_meters|default:"-" }}</td>
+              <td>{{ reading.speed_kmh|default:"-" }}</td>
+              <td>
+                {% if reading.battery_level or reading.battery_level == 0 %}
+                {{ reading.battery_level }}%
+                {% else %}
+                -
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-muted text-center py-3">No GPS readings received.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
