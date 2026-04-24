@@ -17,22 +17,47 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+def _env_bool(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_list(name, default=""):
+    value = os.getenv(name, default)
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-bk2v%qzc=r4xn^-@2=2bziaw-1ggy0!7jcsa@(+d1+xr#2z8(^'
+SECRET_KEY = os.getenv(
+    "DJANGO_SECRET_KEY",
+    "django-insecure-bk2v%qzc=r4xn^-@2=2bziaw-1ggy0!7jcsa@(+d1+xr#2z8(^",
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = _env_bool("DJANGO_DEBUG", default=True)
 
-ALLOWED_HOSTS = [
-    "127.0.0.1",
-    "localhost",
-    "[::1]",
-    "DESKTOP-T7IA860",
-    "10.10.2.129",
-]
+ALLOWED_HOSTS = _env_list(
+    "DJANGO_ALLOWED_HOSTS",
+    default=(
+        "127.0.0.1,"
+        "localhost,"
+        "[::1],"
+        "DESKTOP-T7IA860,"
+        "10.10.2.129,"
+        "ictms.kabashug.com,"
+        "www.ictms.kabashug.com"
+    ),
+)
+
+CSRF_TRUSTED_ORIGINS = _env_list(
+    "DJANGO_CSRF_TRUSTED_ORIGINS",
+    default="https://ictms.kabashug.com,https://www.ictms.kabashug.com",
+)
 
 
 # Application definition
@@ -171,9 +196,10 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap4"
 CRISPY_TEMPLATE_PACK = "bootstrap4"
 
 # CORS settings (for IoT devices)
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8000",
-]
+CORS_ALLOWED_ORIGINS = _env_list(
+    "DJANGO_CORS_ALLOWED_ORIGINS",
+    default="http://localhost:8000",
+)
 
 JAZZMIN_SETTINGS = {
     # Title of the window
@@ -252,15 +278,6 @@ JAZZMIN_UI_TWEAKS = {
     },
     "actions_sticky_top": False,
 }
-
-
-def _env_bool(name, default=False):
-    value = os.getenv(name)
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "on"}
-
-
 EASY_SEND_SMS_ENABLED = _env_bool("EASY_SEND_SMS_ENABLED", default=False)
 EASY_SEND_SMS_API_KEY = os.getenv("EASY_SEND_SMS_API_KEY") or os.getenv("EASYSENDSMS_API_KEY", "")
 EASY_SEND_SMS_SENDER_ID = os.getenv("EASY_SEND_SMS_SENDER_ID", "")
