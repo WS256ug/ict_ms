@@ -272,6 +272,22 @@ class AssetCrudViewTests(TestCase):
             [self.software_one.pk],
         )
 
+    def test_asset_form_shows_software_for_computers_when_flag_is_stale(self):
+        AssetCategory.objects.filter(pk=self.category.pk).update(is_computer_category=False)
+
+        form = AssetForm(data={"category": self.category.pk}, user=self.user)
+
+        self.assertTrue(form.show_software_field)
+        self.assertNotIn("disabled", form.fields["software"].widget.attrs)
+
+    def test_asset_form_hides_software_for_non_computer_when_flag_is_stale(self):
+        AssetCategory.objects.filter(pk=self.projector_category.pk).update(is_computer_category=True)
+
+        form = AssetForm(data={"category": self.projector_category.pk}, user=self.user)
+
+        self.assertFalse(form.show_software_field)
+        self.assertEqual(form.fields["software"].widget.attrs.get("disabled"), "disabled")
+
     def test_asset_update_view_renders_add_selected_software_button(self):
         response = self.client.get(reverse("assets:asset_update", args=[self.asset.pk]))
 

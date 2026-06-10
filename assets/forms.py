@@ -119,11 +119,6 @@ class AssetForm(forms.ModelForm):
         self.fields["useful_life_years"].help_text = (
             "Straight-line depreciation is calculated automatically using the asset purchase cost."
         )
-        self.computer_category_id = (
-            AssetCategory.objects.filter(is_computer_category=True)
-            .values_list("pk", flat=True)
-            .first()
-        )
         self.attribute_value_by_id = {}
         current_location = self.instance.current_location if self.instance.pk else None
 
@@ -163,17 +158,22 @@ class AssetForm(forms.ModelForm):
         elif self.instance.pk:
             category_id = self.instance.category_id
 
+        selected_category = None
         if category_id:
+            selected_category = AssetCategory.objects.filter(pk=category_id).first()
             self.fields["asset_type"].queryset = AssetType.objects.filter(
                 category_id=category_id
             ).order_by("name")
         elif self.instance.pk:
+            selected_category = self.instance.category
             self.fields["asset_type"].queryset = AssetType.objects.select_related("category").order_by(
                 "category__name",
                 "name",
             )
 
-        self.show_software_field = str(category_id or "") == str(self.computer_category_id or "")
+        self.show_software_field = bool(
+            selected_category and selected_category.supports_software_catalog
+        )
         selected_software_values = self["software"].value() or []
         self.selected_software_ids = {str(value) for value in selected_software_values}
         for software in self.fields["software"].queryset:
@@ -347,7 +347,7 @@ class AssetForm(forms.ModelForm):
         if purchase_cost is not None and salvage_value > purchase_cost:
             self.add_error("salvage_value", "End-of-Life Value cannot exceed purchase cost.")
 
-        if selected_software and (not category or not category.is_computer_category):
+        if selected_software and (not category or not category.supports_software_catalog):
             self.add_error("software", "Software can only be selected for computer assets.")
 
         return cleaned_data

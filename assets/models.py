@@ -40,6 +40,9 @@ class AssetCategoryQuerySet(models.QuerySet):
 
 # Begin AssetCategory model
 class AssetCategory(models.Model):
+    COMPUTER_CATEGORY_NAME = "Computers"
+    COMPUTER_CATEGORY_ALIASES = {"computer", "computers"}
+
     objects = AssetCategoryQuerySet.as_manager()
 
     name = models.CharField(max_length=100, unique=True)
@@ -58,8 +61,13 @@ class AssetCategory(models.Model):
         super().clean()
 
     def save(self, *args, **kwargs):
+        self.is_computer_category = self.supports_software_catalog
         self.full_clean()
         return super().save(*args, **kwargs)
+
+    @property
+    def supports_software_catalog(self):
+        return " ".join((self.name or "").split()).casefold() in self.COMPUTER_CATEGORY_ALIASES
 
 
 # Begin AssetType model
@@ -213,7 +221,7 @@ class Asset(models.Model):
 
     @property
     def is_computer(self):
-        return bool(self.category_id and self.category.is_computer_category)
+        return bool(self.category_id and self.category.supports_software_catalog)
 # End Asset model
 
 

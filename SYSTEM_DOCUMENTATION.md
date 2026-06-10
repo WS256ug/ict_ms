@@ -113,6 +113,13 @@ Leaflet/OpenStreetMap <--- asset GPS detail page
 QR Code Library <--- asset QR endpoint
 ```
 
+### Entity Relationship Diagram
+The current operational ERD is documented as a Mermaid-renderable figure in `SYSTEM_ERD.md`.
+
+Use this file for reports, presentations, or academic documentation that needs the database relationship figure:
+
+- `SYSTEM_ERD.md`: full current operational ERD with primary keys, foreign keys, unique keys, and relationship cardinalities
+
 ### Architectural Observations
 - The current production path is strongly centered on `assets`, `tickets`, `reports`, `notifications`, and `iot_monitoring`.
 - `maintenance` and `assets` both contain maintenance-related models. The design appears intentional but layered: `assets.MaintenanceRecord` supports end-user CRUD, while `maintenance.MaintenanceLog` and `MaintenanceSchedule` support more formal maintenance operations and dashboard/admin views.

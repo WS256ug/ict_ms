@@ -102,6 +102,8 @@ class AssetDepreciationInline(admin.TabularInline):
 @admin.register(AssetCategory)
 class AssetCategoryAdmin(admin.ModelAdmin):
     list_display = ("name", "type_count", "asset_count", "computer_category")
+    fields = ("name", "description", "is_computer_category")
+    readonly_fields = ("is_computer_category",)
     search_fields = ("name",)
 
     def get_queryset(self, request):
