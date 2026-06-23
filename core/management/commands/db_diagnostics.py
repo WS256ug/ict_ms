@@ -11,9 +11,15 @@ class Command(BaseCommand):
             default="assets",
             help="App label prefix to inspect. Defaults to assets.",
         )
+        parser.add_argument(
+            "--verbose",
+            action="store_true",
+            help="Include indexes and constraints. Defaults to compact output.",
+        )
 
     def handle(self, *args, **options):
         app_label = options["app"]
+        verbose = options["verbose"]
         prefix = f"{app_label}_"
 
         with connection.cursor() as cursor:
@@ -78,10 +84,13 @@ class Command(BaseCommand):
                 [f"{prefix}%", f"{prefix}%"],
             )
             indexes = cursor.fetchall()
-            self.stdout.write(f"\nIndexes related to {prefix}:")
-            for index, table in indexes or [("none", "")]:
-                suffix = f" on {table}" if table else ""
-                self.stdout.write(f"  {index}{suffix}")
+            if verbose:
+                self.stdout.write(f"\nIndexes related to {prefix}:")
+                for index, table in indexes or [("none", "")]:
+                    suffix = f" on {table}" if table else ""
+                    self.stdout.write(f"  {index}{suffix}")
+            else:
+                self.stdout.write(f"\nIndex count related to {prefix}: {len(indexes)}")
 
             cursor.execute(
                 """
@@ -94,7 +103,12 @@ class Command(BaseCommand):
                 [f"{prefix}%", f"{prefix}%"],
             )
             constraints = cursor.fetchall()
-            self.stdout.write(f"\nConstraints related to {prefix}:")
-            for constraint, table in constraints or [("none", "")]:
-                suffix = f" on {table}" if table else ""
-                self.stdout.write(f"  {constraint}{suffix}")
+            if verbose:
+                self.stdout.write(f"\nConstraints related to {prefix}:")
+                for constraint, table in constraints or [("none", "")]:
+                    suffix = f" on {table}" if table else ""
+                    self.stdout.write(f"  {constraint}{suffix}")
+            else:
+                self.stdout.write(
+                    f"Constraint count related to {prefix}: {len(constraints)}"
+                )

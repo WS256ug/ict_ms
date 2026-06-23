@@ -1,5 +1,7 @@
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
+from django.db import DatabaseError
 
 
 class Command(BaseCommand):
@@ -39,37 +41,53 @@ class Command(BaseCommand):
 
         User = get_user_model()
         email = User.objects.normalize_email(email)
-        user, created = User.objects.get_or_create(
-            email=email,
-            defaults={
+        try:
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "role": "ADMIN",
+                    "is_staff": True,
+                    "is_superuser": True,
+                    "is_active": True,
+                },
+            )
+
+            changed_fields = []
+            for field, value in {
                 "first_name": first_name,
                 "last_name": last_name,
                 "role": "ADMIN",
                 "is_staff": True,
                 "is_superuser": True,
                 "is_active": True,
-            },
-        )
+            }.items():
+                if getattr(user, field) != value:
+                    setattr(user, field, value)
+                    changed_fields.append(field)
 
-        changed_fields = []
-        for field, value in {
-            "first_name": first_name,
-            "last_name": last_name,
-            "role": "ADMIN",
-            "is_staff": True,
-            "is_superuser": True,
-            "is_active": True,
-        }.items():
-            if getattr(user, field) != value:
-                setattr(user, field, value)
-                changed_fields.append(field)
+            if created or password:
+                user.set_password(password)
+                changed_fields.append("password")
 
-        if created or password:
-            user.set_password(password)
-            changed_fields.append("password")
-
-        if changed_fields:
-            user.save(update_fields=sorted(set(changed_fields)))
+            if changed_fields:
+                user.save(update_fields=sorted(set(changed_fields)))
+        except DatabaseError as exc:
+            self.stderr.write(
+                self.style.ERROR(
+                    f"Superuser creation failed: {exc.__class__.__name__}: {exc}"
+                )
+            )
+            self.stderr.write("=== Account schema diagnostics ===")
+            call_command(
+                "db_diagnostics",
+                app="accounts",
+                verbose=True,
+                stdout=self.stderr,
+                stderr=self.stderr,
+            )
+            raise
 
         action = "Created" if created else "Updated"
         self.stdout.write(self.style.SUCCESS(f"{action} deploy superuser: {email}"))

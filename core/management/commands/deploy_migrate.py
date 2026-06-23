@@ -53,16 +53,13 @@ class Command(BaseCommand):
         call_command("db_diagnostics", app="accounts")
         call_command("db_diagnostics", app="assets")
 
-        self.stdout.write("\n=== Migration plan ===")
-        call_command("showmigrations", plan=True)
-
         self.stdout.write("\n=== Running migrate --fake-initial ===")
         try:
             call_command(
                 "migrate",
                 interactive=False,
                 fake_initial=True,
-                verbosity=2,
+                verbosity=1,
             )
         except Exception as exc:
             self.stderr.write("\n=== Migration failed ===")
@@ -71,7 +68,8 @@ class Command(BaseCommand):
             if connection.vendor == "postgresql":
                 self.stderr.write("\n=== Post-failure diagnostics ===")
                 try:
-                    call_command("db_diagnostics", app="accounts")
+                    call_command("showmigrations", plan=True)
+                    call_command("db_diagnostics", app="accounts", verbose=True)
                     call_command("db_diagnostics", app="assets")
                 except Exception as diagnostics_exc:
                     self.stderr.write(
