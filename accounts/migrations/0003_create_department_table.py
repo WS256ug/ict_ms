@@ -1,21 +1,11 @@
-from django.db import migrations, models
+from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("accounts", "0002_alter_user_role"),
     ]
 
-    operations = [
-        migrations.CreateModel(
-            name="Department",
-            fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("name", models.CharField(max_length=100, unique=True)),
-            ],
-            options={
-                "ordering": ["name"],
-            },
-        ),
-    ]
+    # Department is created by 0001_initial. This migration is kept as a
+    # compatibility placeholder so existing deployments can record it safely.
+    operations = []

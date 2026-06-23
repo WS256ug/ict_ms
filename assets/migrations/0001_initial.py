@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("accounts", "0003_create_department_table"),
+        ('accounts', '0001_initial'),
     ]
 
     operations = [
