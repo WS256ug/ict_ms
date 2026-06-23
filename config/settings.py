@@ -12,7 +12,9 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 
+import dj_database_url
 from decouple import AutoConfig
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -33,6 +35,20 @@ def _env_list(name, default=""):
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def _append_unique(items, *values):
+    for value in values:
+        if value and value not in items:
+            items.append(value)
+
+
+def _env_host(name):
+    value = env(name, default="").strip()
+    if not value:
+        return ""
+    value = value.removeprefix("https://").removeprefix("http://")
+    return value.split("/", 1)[0]
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
@@ -42,8 +58,10 @@ SECRET_KEY = env(
     default="django-insecure-bk2v%qzc=r4xn^-@2=2bziaw-1ggy0!7jcsa@(+d1+xr#2z8(^",
 )
 
+RUNNING_ON_VERCEL = _env_bool("VERCEL", default=False)
+
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = _env_bool("DJANGO_DEBUG", default=True)
+DEBUG = _env_bool("DJANGO_DEBUG", default=not RUNNING_ON_VERCEL)
 
 ALLOWED_HOSTS = _env_list(
     "DJANGO_ALLOWED_HOSTS",
@@ -51,6 +69,7 @@ ALLOWED_HOSTS = _env_list(
         "127.0.0.1,"
         "localhost,"
         "ict-ms.vercel.app,"
+        "ict-8zpvb95rg-ws-teams.vercel.app,"
         "[::1],"
         "DESKTOP-T7IA860,"
         "10.10.2.129,"
@@ -59,9 +78,29 @@ ALLOWED_HOSTS = _env_list(
     ),
 )
 
+VERCEL_HOSTS = [
+    host
+    for host in (
+        _env_host("VERCEL_URL"),
+        _env_host("VERCEL_BRANCH_URL"),
+        _env_host("VERCEL_PROJECT_PRODUCTION_URL"),
+    )
+    if host
+]
+_append_unique(ALLOWED_HOSTS, *VERCEL_HOSTS)
+
 CSRF_TRUSTED_ORIGINS = _env_list(
     "DJANGO_CSRF_TRUSTED_ORIGINS",
-    default="https://ictms.kabashug.com,https://www.ictms.kabashug.com",
+    default=(
+        "https://ict-ms.vercel.app,"
+        "https://ict-8zpvb95rg-ws-teams.vercel.app,"
+        "https://ictms.kabashug.com,"
+        "https://www.ictms.kabashug.com"
+    ),
+)
+_append_unique(
+    CSRF_TRUSTED_ORIGINS,
+    *(f"https://{host}" for host in VERCEL_HOSTS),
 )
 
 
@@ -130,12 +169,29 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+DATABASE_URL = env("DATABASE_URL", default="") or env("POSTGRES_URL", default="")
+
+if DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=_env_bool("DATABASE_SSL_REQUIRE", default=not DEBUG),
+        )
     }
-}
+elif RUNNING_ON_VERCEL:
+    raise ImproperlyConfigured(
+        "Set DATABASE_URL or POSTGRES_URL to a hosted database on Vercel. "
+        "SQLite cannot be used reliably in the serverless filesystem."
+    )
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
