@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import Department
-from assets.models import Asset, AssetCategory, AssetType
+from assets.models import Asset, AssetCategory
 
 from .models import GPSReading, TrackerDevice
 
@@ -20,12 +20,10 @@ class GPSIngestViewTests(TestCase):
             role="ADMIN",
         )
         self.category = AssetCategory.objects.get(name="Computers")
-        self.asset_type = AssetType.objects.create(category=self.category, name="Tracker Laptop")
         self.asset = Asset.objects.create(
             asset_tag="IUIU-PR-001",
             name="Portable Tracker",
             category=self.category,
-            asset_type=self.asset_type,
             department=self.department,
         )
         self.tracker = TrackerDevice.objects.create(

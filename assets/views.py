@@ -24,7 +24,6 @@ from .models import (
     AssetAssignment,
     AssetCategory,
     AssetDepreciation,
-    AssetType,
     Location,
     MaintenanceRecord,
     Software,
@@ -75,9 +74,7 @@ def _asset_gps_context(asset):
 def asset_list(request):
     assets = Asset.objects.select_related(
         "category",
-        "asset_type",
         "department",
-        "purchase",
         "depreciation",
     )
     filter_form = AssetFilterForm(request.GET or None)
@@ -94,10 +91,6 @@ def asset_list(request):
         category = filter_form.cleaned_data.get("category")
         if category:
             assets = assets.filter(category=category)
-
-        asset_type = filter_form.cleaned_data.get("asset_type")
-        if asset_type:
-            assets = assets.filter(asset_type=asset_type)
 
         department = filter_form.cleaned_data.get("department")
         if department:
@@ -141,7 +134,7 @@ def asset_list(request):
 @login_required
 def asset_detail(request, pk):
     asset = get_object_or_404(
-        Asset.objects.select_related("category", "asset_type", "department", "purchase", "depreciation"),
+        Asset.objects.select_related("category", "department", "depreciation"),
         pk=pk,
     )
     try:
@@ -204,10 +197,10 @@ def asset_create(request):
 # End asset_create view
 
 
-# Begin asset_type_field view
+# Begin asset_category_fields view
 @login_required
 @admin_or_technician_required
-def asset_type_field(request):
+def asset_category_fields(request):
     asset = None
     asset_id = request.GET.get("asset_instance_id")
     if asset_id:
@@ -222,7 +215,7 @@ def asset_type_field(request):
             "form": form,
         },
     )
-# End asset_type_field view
+# End asset_category_fields view
 
 
 # Begin asset_update view
@@ -339,7 +332,6 @@ def software_detail(request, pk):
         "asset",
         "installed_by",
         "asset__category",
-        "asset__asset_type",
     ).order_by("asset__asset_tag")
     return render(
         request,
@@ -441,7 +433,6 @@ def software_delete(request, pk):
 def category_list(request):
     categories = AssetCategory.objects.ordered_choices().annotate(
         asset_count=Count("assets"),
-        type_count=Count("types"),
     )
     return render(request, "assets/category_list.html", {"categories": categories})
 # End category_list view

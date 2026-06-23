@@ -9,7 +9,7 @@ from django.test import SimpleTestCase, TestCase, override_settings
 from django.utils import timezone
 
 from accounts.models import Department
-from assets.models import Asset, AssetAssignment, AssetCategory, AssetType
+from assets.models import Asset, AssetAssignment, AssetCategory
 from tickets.models import FaultTicket
 
 from .models import SMSNotificationLog
@@ -87,12 +87,10 @@ class SMSNotificationTests(TestCase):
             department=self.department,
         )
         self.category = AssetCategory.objects.get(name="Computers")
-        self.asset_type = AssetType.objects.create(category=self.category, name="SMS Test Laptop")
         self.asset = Asset.objects.create(
             asset_tag="ASSET-SMS-001",
             name="SMS Test Asset",
             category=self.category,
-            asset_type=self.asset_type,
             department=self.department,
             purchase_cost=Decimal("1200.00"),
         )

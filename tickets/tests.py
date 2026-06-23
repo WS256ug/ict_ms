@@ -14,7 +14,6 @@ from assets.models import (
     Asset,
     AssetCategory,
     AssetLocationHistory,
-    AssetType,
     Location,
     MaintenanceRecord,
 )
@@ -80,7 +79,6 @@ class TicketViewTests(TestCase):
             department=self.finance_department,
         )
         self.category = AssetCategory.objects.get(name="Computers")
-        self.asset_type = AssetType.objects.create(category=self.category, name="Ticket Laptop")
         self.location = Location.objects.create(name="ICT Office", building="Admin Block", room="12")
         self.finance_location = Location.objects.create(
             name="Finance Office",
@@ -91,14 +89,12 @@ class TicketViewTests(TestCase):
             asset_tag="ASSET-TKT-001",
             name="Ticket Laptop",
             category=self.category,
-            asset_type=self.asset_type,
             department=self.ict_department,
         )
         self.finance_asset = Asset.objects.create(
             asset_tag="ASSET-TKT-002",
             name="Finance Desktop",
             category=self.category,
-            asset_type=self.asset_type,
             department=self.finance_department,
         )
         AssetLocationHistory.objects.create(

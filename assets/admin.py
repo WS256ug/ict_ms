@@ -13,8 +13,6 @@ from .models import (
     AssetCategory,
     AssetDepreciation,
     AssetLocationHistory,
-    AssetPurchase,
-    AssetType,
     InstalledSoftware,
     Location,
     MaintenanceRecord,
@@ -101,20 +99,15 @@ class AssetDepreciationInline(admin.TabularInline):
 
 @admin.register(AssetCategory)
 class AssetCategoryAdmin(admin.ModelAdmin):
-    list_display = ("name", "type_count", "asset_count", "computer_category")
+    list_display = ("name", "asset_count", "computer_category")
     fields = ("name", "description", "is_computer_category")
     readonly_fields = ("is_computer_category",)
     search_fields = ("name",)
 
     def get_queryset(self, request):
         return super().get_queryset(request).annotate(
-            type_total=Count("types", distinct=True),
             asset_total=Count("assets", distinct=True),
         ).ordered_choices()
-
-    @admin.display(ordering="type_total", description="Types")
-    def type_count(self, obj):
-        return obj.type_total
 
     @admin.display(ordering="asset_total", description="Assets")
     def asset_count(self, obj):
@@ -125,52 +118,10 @@ class AssetCategoryAdmin(admin.ModelAdmin):
         return obj.is_computer_category
 
 
-@admin.register(AssetType)
-class AssetTypeAdmin(admin.ModelAdmin):
-    list_display = ("name", "category", "asset_count")
-    list_filter = ("category",)
-    search_fields = ("name", "category__name")
-    autocomplete_fields = ("category",)
-
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related("category").annotate(
-            asset_total=Count("assets", distinct=True)
-        )
-
-    @admin.display(ordering="asset_total", description="Assets")
-    def asset_count(self, obj):
-        return obj.asset_total
-
-
 @admin.register(Supplier)
 class SupplierAdmin(admin.ModelAdmin):
-    list_display = ("name", "contact_email", "phone", "purchase_count")
+    list_display = ("name", "contact_email", "phone")
     search_fields = ("name", "contact_email", "phone")
-
-    def get_queryset(self, request):
-        return super().get_queryset(request).annotate(purchase_total=Count("purchases", distinct=True))
-
-    @admin.display(ordering="purchase_total", description="Purchases")
-    def purchase_count(self, obj):
-        return obj.purchase_total
-
-
-@admin.register(AssetPurchase)
-class AssetPurchaseAdmin(admin.ModelAdmin):
-    list_display = ("purchase_order", "supplier", "purchase_date", "total_cost", "asset_count")
-    list_filter = ("purchase_date", "supplier")
-    search_fields = ("purchase_order", "invoice_number", "supplier__name")
-    autocomplete_fields = ("supplier",)
-    date_hierarchy = "purchase_date"
-
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related("supplier").annotate(
-            asset_total=Count("assets", distinct=True)
-        )
-
-    @admin.display(ordering="asset_total", description="Assets")
-    def asset_count(self, obj):
-        return obj.asset_total
 
 
 @admin.register(Asset)
@@ -179,7 +130,6 @@ class AssetAdmin(admin.ModelAdmin):
         "asset_tag",
         "name",
         "category",
-        "asset_type",
         "department",
         "status_badge",
         "assigned_to_display",
@@ -187,10 +137,10 @@ class AssetAdmin(admin.ModelAdmin):
         "current_value_display",
         "is_active",
     )
-    list_filter = ("status", "is_active", "category", "asset_type", "department")
+    list_filter = ("status", "is_active", "category", "department")
     search_fields = ("asset_tag", "name", "serial_number")
-    autocomplete_fields = ("category", "asset_type", "department", "purchase")
-    list_select_related = ("category", "asset_type", "department", "purchase")
+    autocomplete_fields = ("category", "department")
+    list_select_related = ("category", "department")
     readonly_fields = (
         "created_at",
         "updated_at",
@@ -206,7 +156,6 @@ class AssetAdmin(admin.ModelAdmin):
                     "asset_tag",
                     "name",
                     "category",
-                    "asset_type",
                     "serial_number",
                     "status",
                     "is_active",
@@ -218,7 +167,6 @@ class AssetAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "department",
-                    "purchase",
                     "purchase_date",
                     "purchase_cost",
                     "warranty_expiry",

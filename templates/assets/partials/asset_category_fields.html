@@ -1,10 +1,3 @@
-<div class="col-md-6">
-  <label class="form-label" for="{{ form.asset_type.id_for_label }}">Asset Type</label>
-  {{ form.asset_type }}
-  <div class="form-text">Asset types update automatically based on the selected category.</div>
-  <div class="text-danger small">{{ form.asset_type.errors }}</div>
-</div>
-
 {% if form.show_software_field %}
 <div class="col-12" id="software-field-container" data-software-picker>
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">

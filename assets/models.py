@@ -70,24 +70,6 @@ class AssetCategory(models.Model):
         return " ".join((self.name or "").split()).casefold() in self.COMPUTER_CATEGORY_ALIASES
 
 
-# Begin AssetType model
-class AssetType(models.Model):
-    category = models.ForeignKey(
-        AssetCategory,
-        on_delete=models.CASCADE,
-        related_name="types",
-    )
-    name = models.CharField(max_length=100)
-
-    class Meta:
-        ordering = ["category__name", "name"]
-        unique_together = ("category", "name")
-
-    def __str__(self):
-        return f"{self.category.name} - {self.name}"
-# End AssetType model
-
-
 # Begin Supplier model
 class Supplier(models.Model):
     name = models.CharField(max_length=150, unique=True)
@@ -101,28 +83,6 @@ class Supplier(models.Model):
     def __str__(self):
         return self.name
 # End Supplier model
-
-
-# Begin AssetPurchase model
-class AssetPurchase(models.Model):
-    supplier = models.ForeignKey(
-        Supplier,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="purchases",
-    )
-    purchase_order = models.CharField(max_length=100)
-    invoice_number = models.CharField(max_length=100, blank=True)
-    purchase_date = models.DateField()
-    total_cost = models.DecimalField(max_digits=12, decimal_places=2)
-
-    class Meta:
-        ordering = ["-purchase_date", "-id"]
-
-    def __str__(self):
-        return f"PO {self.purchase_order}"
-# End AssetPurchase model
 
 
 # Begin Asset model
@@ -150,21 +110,9 @@ class Asset(models.Model):
         on_delete=models.PROTECT,
         related_name="assets",
     )
-    asset_type = models.ForeignKey(
-        AssetType,
-        on_delete=models.PROTECT,
-        related_name="assets",
-    )
     serial_number = models.CharField(max_length=200, blank=True)
     department = models.ForeignKey(
         Department,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="assets",
-    )
-    purchase = models.ForeignKey(
-        AssetPurchase,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -192,13 +140,6 @@ class Asset(models.Model):
 
     def __str__(self):
         return f"{self.asset_tag} - {self.name}"
-
-    def clean(self):
-        if self.asset_type_id and self.category_id:
-            if self.asset_type.category_id != self.category_id:
-                raise ValidationError(
-                    {"asset_type": "Selected asset type does not belong to the selected category."}
-                )
 
     @property
     def current_assignment(self):

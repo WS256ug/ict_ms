@@ -18,7 +18,6 @@ from assets.models import (
     AssetCategory,
     AssetDepreciation,
     AssetLocationHistory,
-    AssetType,
     InstalledSoftware,
     Location,
     MaintenanceRecord,
@@ -38,33 +37,12 @@ class AssetModelTests(TestCase):
         )
         self.computer_category = AssetCategory.objects.get(name="Computers")
         self.projector_category = AssetCategory.objects.get(name="Projectors")
-        self.laptop_type = AssetType.objects.create(category=self.computer_category, name="Laptop")
-        self.projector_type = AssetType.objects.create(category=self.projector_category, name="Projector")
-
-    def test_asset_category_name_must_match_defined_choices(self):
-        category = AssetCategory(name="Router")
-
-        with self.assertRaises(ValidationError):
-            category.full_clean()
-
-    def test_asset_type_must_match_category(self):
-        asset = Asset(
-            asset_tag="ASSET-001",
-            name="Office Laptop",
-            category=self.projector_category,
-            asset_type=self.laptop_type,
-            department=self.department,
-        )
-
-        with self.assertRaises(ValidationError):
-            asset.full_clean()
 
     def test_current_value_uses_depreciation_record(self):
         asset = Asset.objects.create(
             asset_tag="ASSET-002",
             name="Office Laptop",
             category=self.computer_category,
-            asset_type=self.laptop_type,
             department=self.department,
             purchase_date=timezone.localdate() - timedelta(days=365),
             purchase_cost=Decimal("1000.00"),
@@ -85,7 +63,6 @@ class AssetModelTests(TestCase):
             asset_tag="ASSET-003",
             name="Lecture Projector",
             category=self.projector_category,
-            asset_type=self.projector_type,
             department=self.department,
         )
         location_one = Location.objects.create(name="Room 101")
@@ -106,7 +83,6 @@ class AssetModelTests(TestCase):
             asset_tag="ASSET-004",
             name="Developer Laptop",
             category=self.computer_category,
-            asset_type=self.laptop_type,
             department=self.department,
         )
 
@@ -136,7 +112,6 @@ class AssetModelTests(TestCase):
             asset_tag="ASSET-004A",
             name="Staff Laptop",
             category=self.computer_category,
-            asset_type=self.laptop_type,
             department=self.department,
         )
 
@@ -163,7 +138,6 @@ class AssetModelTests(TestCase):
             asset_tag="ASSET-004B",
             name="Visitor Laptop",
             category=self.computer_category,
-            asset_type=self.laptop_type,
             department=self.department,
         )
         form = AssetAssignmentForm(
@@ -186,7 +160,6 @@ class AssetModelTests(TestCase):
             asset_tag="ASSET-005",
             name="Lecture Projector",
             category=self.projector_category,
-            asset_type=self.projector_type,
             department=self.department,
         )
         software = Software.objects.create(name="VLC", version="3.0")
@@ -208,8 +181,6 @@ class AssetCrudViewTests(TestCase):
         )
         self.category = AssetCategory.objects.get(name="Computers")
         self.projector_category = AssetCategory.objects.get(name="Projectors")
-        self.asset_type = AssetType.objects.create(category=self.category, name="Laptop")
-        self.projector_type = AssetType.objects.create(category=self.projector_category, name="Projector")
         self.location = Location.objects.create(name="ICT Store")
         self.second_location = Location.objects.create(name="Lab 2")
         self.software_one = Software.objects.create(name="Microsoft Office", version="2024")
@@ -233,7 +204,6 @@ class AssetCrudViewTests(TestCase):
             asset_tag="ASSET-100",
             name="Demo Laptop",
             category=self.category,
-            asset_type=self.asset_type,
             department=self.department,
         )
         self.client.force_login(self.user)
@@ -250,7 +220,8 @@ class AssetCrudViewTests(TestCase):
         form = AssetForm(instance=self.asset, user=self.user)
 
         self.assertIn("location", form.fields)
-        self.assertIn("purchase", form.fields)
+        self.assertNotIn("asset_type", form.fields)
+        self.assertNotIn("purchase", form.fields)
         self.assertEqual(form._meta.model, Asset)
         self.assertEqual(form["location"].value(), self.location.pk)
 
@@ -325,11 +296,9 @@ class AssetCrudViewTests(TestCase):
                 "asset_tag": "ASSET-101",
                 "name": "New Laptop",
                 "category": self.category.pk,
-                "asset_type": self.asset_type.pk,
                 "serial_number": "SER-101",
                 "department": self.department.pk,
                 "location": self.location.pk,
-                "purchase": "",
                 "purchase_date": "2026-03-13",
                 "purchase_cost": "2500.00",
                 "warranty_expiry": "2027-03-13",
@@ -362,12 +331,10 @@ class AssetCrudViewTests(TestCase):
                 "asset_tag": "ASSET-101A",
                 "name": "Software Laptop",
                 "category": self.category.pk,
-                "asset_type": self.asset_type.pk,
                 "serial_number": "SER-101A",
                 "department": self.department.pk,
                 "location": self.location.pk,
                 "software": [self.software_one.pk, self.software_two.pk],
-                "purchase": "",
                 "purchase_date": "",
                 "purchase_cost": "",
                 "warranty_expiry": "",
@@ -434,14 +401,12 @@ class AssetCrudViewTests(TestCase):
                 "asset_tag": "ASSET-101B",
                 "name": "Configured Laptop",
                 "category": self.category.pk,
-                "asset_type": self.asset_type.pk,
                 "serial_number": "SER-101B",
                 "department": self.department.pk,
                 "location": self.location.pk,
                 "software": [self.software_one.pk],
                 AssetForm.attribute_field_name(self.processor_attribute.pk): "Intel Core i5",
                 AssetForm.attribute_field_name(self.antivirus_attribute.pk): "true",
-                "purchase": "",
                 "purchase_date": "",
                 "purchase_cost": "",
                 "warranty_expiry": "",
@@ -476,11 +441,9 @@ class AssetCrudViewTests(TestCase):
                 "asset_tag": self.asset.asset_tag,
                 "name": "Updated Laptop",
                 "category": self.category.pk,
-                "asset_type": self.asset_type.pk,
                 "serial_number": "SER-UPDATED",
                 "department": self.department.pk,
                 "location": self.second_location.pk,
-                "purchase": "",
                 "purchase_date": "",
                 "purchase_cost": "",
                 "warranty_expiry": "",
@@ -509,11 +472,9 @@ class AssetCrudViewTests(TestCase):
                 "asset_tag": self.asset.asset_tag,
                 "name": self.asset.name,
                 "category": self.projector_category.pk,
-                "asset_type": self.projector_type.pk,
                 "serial_number": self.asset.serial_number,
                 "department": self.department.pk,
                 "location": self.location.pk,
-                "purchase": "",
                 "purchase_date": "",
                 "purchase_cost": "",
                 "warranty_expiry": "",
@@ -535,11 +496,9 @@ class AssetCrudViewTests(TestCase):
                 "asset_tag": self.asset.asset_tag,
                 "name": self.asset.name,
                 "category": self.category.pk,
-                "asset_type": self.asset_type.pk,
                 "serial_number": self.asset.serial_number,
                 "department": self.department.pk,
                 "location": self.location.pk,
-                "purchase": "",
                 "purchase_date": "2026-03-01",
                 "purchase_cost": "1800.00",
                 "warranty_expiry": "",
@@ -577,22 +536,17 @@ class AssetCrudViewTests(TestCase):
         self.assertContains(response, "Asset Register")
         self.assertNotContains(response, "<html>", html=False)
 
-    def test_asset_type_field_returns_types_for_selected_category(self):
-        other_category = AssetCategory.objects.get(name="Printers")
-        AssetType.objects.create(category=other_category, name="Laser Printer")
-
+    def test_asset_category_fields_returns_category_specific_fields(self):
         response = self.client.get(
-            reverse("assets:asset_type_field"),
+            reverse("assets:asset_category_fields"),
             {"category": self.category.pk},
             HTTP_HX_REQUEST="true",
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Laptop")
         self.assertContains(response, "Installed Software")
         self.assertContains(response, "Processor")
         self.assertContains(response, "Antivirus Installed")
-        self.assertNotContains(response, "Laser Printer")
         self.assertNotContains(response, "Lumens")
 
 
@@ -614,12 +568,10 @@ class SoftwareCrudViewTests(TestCase):
             role="DEPARTMENT_USER",
         )
         self.category = AssetCategory.objects.get(name="Computers")
-        self.asset_type = AssetType.objects.create(category=self.category, name="Desktop")
         self.asset = Asset.objects.create(
             asset_tag="ASSET-SW-001",
             name="Software Desktop",
             category=self.category,
-            asset_type=self.asset_type,
             department=self.department,
         )
         self.software = Software.objects.create(name="Windows 11", version="23H2", vendor="Microsoft")
@@ -717,7 +669,6 @@ class LocationCrudViewTests(TestCase):
             department=self.department,
         )
         self.category = AssetCategory.objects.get(name="Computers")
-        self.asset_type = AssetType.objects.create(category=self.category, name="Notebook")
         self.location = Location.objects.create(name="Main Store", building="Block A", room="1")
         self.client.force_login(self.admin)
 
@@ -775,7 +726,6 @@ class LocationCrudViewTests(TestCase):
             asset_tag="ASSET-150",
             name="Tracked Laptop",
             category=self.category,
-            asset_type=self.asset_type,
             department=self.department,
         )
         AssetLocationHistory.objects.create(asset=asset, location=self.location, moved_by=self.admin)
@@ -805,12 +755,10 @@ class AssetAssignmentCrudViewTests(TestCase):
             role="DEPARTMENT_USER",
         )
         self.category = AssetCategory.objects.get(name="Computers")
-        self.asset_type = AssetType.objects.create(category=self.category, name="Desktop")
         self.asset = Asset.objects.create(
             asset_tag="ASSET-200",
             name="Assigned Desktop",
             category=self.category,
-            asset_type=self.asset_type,
             department=self.department,
         )
         self.client.force_login(self.admin)
@@ -949,12 +897,10 @@ class MaintenanceCrudViewTests(TestCase):
             role="ADMIN",
         )
         self.category = AssetCategory.objects.get(name="Computers")
-        self.asset_type = AssetType.objects.create(category=self.category, name="Workstation")
         self.asset = Asset.objects.create(
             asset_tag="ASSET-300",
             name="Office Workstation",
             category=self.category,
-            asset_type=self.asset_type,
             department=self.department,
         )
         self.client.force_login(self.admin)

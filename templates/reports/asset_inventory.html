@@ -45,7 +45,6 @@
             <tr>
               <th>Asset</th>
               <th>Category</th>
-              <th>Type</th>
               <th>Department</th>
               <th>Location</th>
               <th>Status</th>
@@ -60,7 +59,6 @@
                 <span class="text-muted">{{ asset.name }}</span>
               </td>
               <td>{{ asset.category.name }}</td>
-              <td>{{ asset.asset_type.name }}</td>
               <td>{{ asset.department.name|default:"-" }}</td>
               <td>
                 {% if asset.current_location_name %}
@@ -78,7 +76,7 @@
             </tr>
             {% empty %}
             <tr>
-              <td colspan="7" class="text-center text-muted py-4">No assets found.</td>
+              <td colspan="6" class="text-center text-muted py-4">No assets found.</td>
             </tr>
             {% endfor %}
           </tbody>

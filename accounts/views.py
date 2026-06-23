@@ -209,7 +209,7 @@ def department_detail(request, pk):
     context = {
         "department": department,
         "users": department.users.order_by("-date_joined")[:10],
-        "assets": department.assets.select_related("category", "asset_type").order_by("asset_tag")[:10],
+        "assets": department.assets.select_related("category").order_by("asset_tag")[:10],
     }
     return render(request, "accounts/department_detail.html", context)
 

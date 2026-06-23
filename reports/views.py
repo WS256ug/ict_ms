@@ -30,7 +30,7 @@ from tickets.permissions import ticket_queryset_for_user
 def _asset_inventory_queryset():
     latest_location = AssetLocationHistory.objects.filter(asset=OuterRef("pk")).order_by("-moved_at")
     return (
-        Asset.objects.select_related("category", "asset_type", "department")
+        Asset.objects.select_related("category", "department")
         .annotate(
             current_location_name=Subquery(latest_location.values("location__name")[:1]),
             current_location_building=Subquery(latest_location.values("location__building")[:1]),
@@ -608,7 +608,6 @@ def asset_inventory_report(request):
             asset.asset_tag,
             asset.name,
             asset.category.name,
-            asset.asset_type.name,
             asset.department.name if asset.department else "",
             _location_label(
                 asset.current_location_name,
@@ -625,7 +624,7 @@ def asset_inventory_report(request):
         context,
         "Asset Inventory Report",
         _report_filename("asset-inventory"),
-        ["Asset Tag", "Name", "Category", "Type", "Department", "Location", "Status"],
+        ["Asset Tag", "Name", "Category", "Department", "Location", "Status"],
         export_rows,
     )
 

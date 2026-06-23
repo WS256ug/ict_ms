@@ -15,7 +15,6 @@ from assets.models import (
     AssetCategory,
     AssetDepreciation,
     AssetLocationHistory,
-    AssetType,
     InstalledSoftware,
     Location,
     MaintenanceRecord,
@@ -65,7 +64,6 @@ class ReportViewTests(TestCase):
         )
 
         self.category = AssetCategory.objects.get(name="Computers")
-        self.asset_type = AssetType.objects.create(category=self.category, name="Laptop")
         self.primary_location = Location.objects.create(
             name="ICT Store",
             building="Main Block",
@@ -81,7 +79,6 @@ class ReportViewTests(TestCase):
             asset_tag="ASSET-REPORT-001",
             name="Assigned Laptop",
             category=self.category,
-            asset_type=self.asset_type,
             department=self.department,
             purchase_date=timezone.localdate() - timedelta(days=600),
             purchase_cost=Decimal("1500.00"),
@@ -90,7 +87,6 @@ class ReportViewTests(TestCase):
             asset_tag="ASSET-REPORT-002",
             name="Maintenance Laptop",
             category=self.category,
-            asset_type=self.asset_type,
             department=self.operations_department,
             purchase_date=timezone.localdate() - timedelta(days=900),
             purchase_cost=Decimal("1800.00"),

@@ -18,7 +18,6 @@
               <tr>
                 <th>Name</th>
                 <th>Description</th>
-                <th>Types</th>
                 <th>Assets</th>
               </tr>
             </thead>
@@ -27,12 +26,11 @@
               <tr>
                 <td>{{ category.name }}</td>
                 <td>{{ category.description|default:"-" }}</td>
-                <td>{{ category.type_count }}</td>
                 <td>{{ category.asset_count }}</td>
               </tr>
               {% empty %}
               <tr>
-                <td colspan="4" class="text-center text-muted py-4">No asset categories found.</td>
+                <td colspan="3" class="text-center text-muted py-4">No asset categories found.</td>
               </tr>
               {% endfor %}
             </tbody>

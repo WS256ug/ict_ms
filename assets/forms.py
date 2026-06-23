@@ -14,8 +14,6 @@ from .models import (
     AssetCategory,
     AssetDepreciation,
     AssetLocationHistory,
-    AssetPurchase,
-    AssetType,
     InstalledSoftware,
     Location,
     MaintenanceRecord,
@@ -65,10 +63,8 @@ class AssetForm(forms.ModelForm):
             "asset_tag",
             "name",
             "category",
-            "asset_type",
             "serial_number",
             "department",
-            "purchase",
             "purchase_date",
             "purchase_cost",
             "warranty_expiry",
@@ -79,12 +75,10 @@ class AssetForm(forms.ModelForm):
             "asset_tag": forms.TextInput(attrs={"class": "form-control", "placeholder": "Asset tag"}),
             "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Asset name"}),
             "category": forms.Select(attrs={"class": "form-select"}),
-            "asset_type": forms.Select(attrs={"class": "form-select"}),
             "serial_number": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Serial number"}
             ),
             "department": forms.Select(attrs={"class": "form-select"}),
-            "purchase": forms.Select(attrs={"class": "form-select"}),
             "purchase_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "purchase_cost": forms.NumberInput(
                 attrs={"class": "form-control", "placeholder": "Purchase cost", "step": "0.01"}
@@ -105,14 +99,9 @@ class AssetForm(forms.ModelForm):
         self.selected_software_options = []
         self.available_software_options = []
         self.fields["category"].queryset = AssetCategory.objects.ordered_choices()
-        self.fields["asset_type"].queryset = AssetType.objects.none()
-        self.fields["asset_type"].empty_label = "Select asset type"
         self.fields["department"].queryset = Department.objects.order_by("name")
         self.fields["location"].queryset = Location.objects.order_by("name", "building", "room")
         self.fields["software"].queryset = Software.objects.order_by("name", "version", "vendor")
-        self.fields["purchase"].queryset = AssetPurchase.objects.select_related("supplier").order_by(
-            "-purchase_date", "-id"
-        )
         self.fields["software"].help_text = (
             "Choose software from the catalog, click Add Selected Software, then save the asset."
         )
@@ -161,15 +150,8 @@ class AssetForm(forms.ModelForm):
         selected_category = None
         if category_id:
             selected_category = AssetCategory.objects.filter(pk=category_id).first()
-            self.fields["asset_type"].queryset = AssetType.objects.filter(
-                category_id=category_id
-            ).order_by("name")
         elif self.instance.pk:
             selected_category = self.instance.category
-            self.fields["asset_type"].queryset = AssetType.objects.select_related("category").order_by(
-                "category__name",
-                "name",
-            )
 
         self.show_software_field = bool(
             selected_category and selected_category.supports_software_catalog
@@ -187,9 +169,6 @@ class AssetForm(forms.ModelForm):
             )
         self._add_attribute_fields()
         self.show_attribute_fields = bool(self.dynamic_attribute_bound_fields)
-
-        if not category_id:
-            self.fields["asset_type"].widget.attrs["disabled"] = "disabled"
 
         if not self.show_software_field:
             self.fields["software"].widget.attrs["disabled"] = "disabled"
@@ -493,7 +472,6 @@ class AssetAssignmentForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["asset"].queryset = Asset.objects.select_related(
             "category",
-            "asset_type",
         ).order_by("asset_tag")
         self.fields["issued_by"].queryset = self.fields["issued_by"].queryset.order_by(
             "first_name",
@@ -576,7 +554,6 @@ class MaintenanceRecordForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["asset"].queryset = Asset.objects.select_related(
             "category",
-            "asset_type",
         ).order_by("asset_tag")
 
         if (
@@ -643,12 +620,6 @@ class AssetFilterForm(forms.Form):
         empty_label="All categories",
         widget=forms.Select(attrs={"class": "form-select"}),
     )
-    asset_type = forms.ModelChoiceField(
-        queryset=AssetType.objects.select_related("category").order_by("category__name", "name"),
-        required=False,
-        empty_label="All asset types",
-        widget=forms.Select(attrs={"class": "form-select"}),
-    )
     department = forms.ModelChoiceField(
         queryset=Department.objects.order_by("name"),
         required=False,
@@ -665,15 +636,6 @@ class AssetFilterForm(forms.Form):
         required=False,
         widget=forms.Select(attrs={"class": "form-select"}),
     )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        category_id = self.data.get("category") if self.is_bound else None
-        if category_id:
-            self.fields["asset_type"].queryset = AssetType.objects.filter(category_id=category_id).order_by(
-                "name"
-            )
-
 
 class AssetAttributeValueForm(forms.ModelForm):
     class Meta:

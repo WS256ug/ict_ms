@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from accounts.models import Department
-from assets.models import Asset, AssetCategory, AssetType
+from assets.models import Asset, AssetCategory
 from maintenance.models import MaintenanceLog, MaintenanceSchedule
 
 
@@ -19,12 +19,10 @@ class MaintenanceSignalTests(TestCase):
             last_name="User",
         )
         self.category = AssetCategory.objects.get(name="Networking")
-        self.asset_type = AssetType.objects.create(category=self.category, name="Core Router")
         self.asset = Asset.objects.create(
             asset_tag="ASSET-100",
             name="Core Router",
             category=self.category,
-            asset_type=self.asset_type,
             department=self.department,
         )
 
