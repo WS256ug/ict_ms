@@ -20,16 +20,20 @@ class Command(BaseCommand):
             self.stdout.write(f"Database vendor: {connection.vendor}")
             self.stdout.write(f"Database name: {connection.settings_dict.get('NAME')}")
 
-            cursor.execute(
-                """
-                select app, name
-                from django_migrations
-                where app = %s
-                order by app, name
-                """,
-                [app_label],
-            )
-            migrations = cursor.fetchall()
+            if "django_migrations" in connection.introspection.table_names():
+                cursor.execute(
+                    """
+                    select app, name
+                    from django_migrations
+                    where app = %s
+                    order by app, name
+                    """,
+                    [app_label],
+                )
+                migrations = cursor.fetchall()
+            else:
+                migrations = []
+
             self.stdout.write(f"\nRecorded migrations for {app_label}:")
             if migrations:
                 for app, name in migrations:
