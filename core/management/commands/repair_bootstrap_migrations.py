@@ -99,6 +99,239 @@ class Command(BaseCommand):
         description = connection.introspection.get_table_description(cursor, table_name)
         return {column.name for column in description}
 
+    def _quote(self, name):
+        return connection.ops.quote_name(name)
+
+    def _add_column_if_missing(self, cursor, table_name, column_name, definition):
+        if column_name in self._table_columns(cursor, table_name):
+            return
+        cursor.execute(
+            f"alter table {self._quote(table_name)} "
+            f"add column {self._quote(column_name)} {definition}"
+        )
+        self.stdout.write(f"{table_name}: added missing column {column_name}.")
+
+    def _drop_column_if_exists(self, cursor, table_name, column_name):
+        if column_name not in self._table_columns(cursor, table_name):
+            return
+        suffix = " cascade" if connection.vendor == "postgresql" else ""
+        cursor.execute(
+            f"alter table {self._quote(table_name)} "
+            f"drop column {self._quote(column_name)}{suffix}"
+        )
+        self.stdout.write(f"{table_name}: dropped legacy column {column_name}.")
+
+    def _repair_accounts_in_place(self, cursor, table_names, reason):
+        if not {"accounts_department", "accounts_user"}.issubset(set(table_names)):
+            return False
+
+        self.stdout.write(f"accounts: attempting in-place schema repair: {reason}")
+
+        timestamp_type = (
+            "timestamp with time zone"
+            if connection.vendor == "postgresql"
+            else "datetime"
+        )
+        now_sql = "NOW()" if connection.vendor == "postgresql" else "CURRENT_TIMESTAMP"
+        id_text = "id::text" if connection.vendor == "postgresql" else "CAST(id AS text)"
+
+        self._add_column_if_missing(
+            cursor, "accounts_department", "code", "varchar(20)"
+        )
+        self._add_column_if_missing(
+            cursor, "accounts_department", "description", "text"
+        )
+        self._add_column_if_missing(
+            cursor, "accounts_department", "created_at", timestamp_type
+        )
+        self._add_column_if_missing(
+            cursor, "accounts_department", "updated_at", timestamp_type
+        )
+        cursor.execute(
+            f"""
+            update accounts_department
+            set code = 'DEPT-' || {id_text}
+            where code is null or code = ''
+            """
+        )
+        cursor.execute(
+            f"""
+            update accounts_department
+            set created_at = {now_sql}
+            where created_at is null
+            """
+        )
+        cursor.execute(
+            f"""
+            update accounts_department
+            set updated_at = {now_sql}
+            where updated_at is null
+            """
+        )
+        cursor.execute(
+            """
+            create unique index if not exists accounts_department_code_unique
+            on accounts_department(code)
+            """
+        )
+
+        self._add_column_if_missing(cursor, "accounts_user", "password", "varchar(128)")
+        self._add_column_if_missing(
+            cursor,
+            "accounts_user",
+            "is_superuser",
+            "boolean default false"
+            if connection.vendor == "postgresql"
+            else "bool default 0",
+        )
+        self._add_column_if_missing(cursor, "accounts_user", "email", "varchar(255)")
+        self._add_column_if_missing(
+            cursor, "accounts_user", "first_name", "varchar(100)"
+        )
+        self._add_column_if_missing(
+            cursor, "accounts_user", "last_name", "varchar(100)"
+        )
+        self._add_column_if_missing(
+            cursor, "accounts_user", "phone_number", "varchar(20)"
+        )
+        self._add_column_if_missing(cursor, "accounts_user", "role", "varchar(20)")
+        self._add_column_if_missing(cursor, "accounts_user", "department_id", "bigint")
+        self._add_column_if_missing(
+            cursor,
+            "accounts_user",
+            "is_active",
+            "boolean default true"
+            if connection.vendor == "postgresql"
+            else "bool default 1",
+        )
+        self._add_column_if_missing(
+            cursor,
+            "accounts_user",
+            "is_staff",
+            "boolean default false"
+            if connection.vendor == "postgresql"
+            else "bool default 0",
+        )
+        self._add_column_if_missing(
+            cursor, "accounts_user", "date_joined", timestamp_type
+        )
+        self._add_column_if_missing(
+            cursor, "accounts_user", "last_login", timestamp_type
+        )
+
+        user_columns = self._table_columns(cursor, "accounts_user")
+        if "username" in user_columns:
+            username_email_expr = (
+                "case when username is not null and position('@' in username) > 1 "
+                "then username else 'user' || id::text || '@example.com' end"
+                if connection.vendor == "postgresql"
+                else "case when username is not null and instr(username, '@') > 1 "
+                "then username else 'user' || CAST(id AS text) || '@example.com' end"
+            )
+        else:
+            username_email_expr = f"'user' || {id_text} || '@example.com'"
+
+        cursor.execute(
+            f"""
+            update accounts_user
+            set email = {username_email_expr}
+            where email is null or email = ''
+            """
+        )
+        cursor.execute(
+            "update accounts_user set first_name = 'User' "
+            "where first_name is null or first_name = ''"
+        )
+        cursor.execute(
+            f"""
+            update accounts_user
+            set last_name = 'Account ' || {id_text}
+            where last_name is null or last_name = ''
+            """
+        )
+        cursor.execute(
+            "update accounts_user set password = '!' "
+            "where password is null or password = ''"
+        )
+        cursor.execute(
+            f"""
+            update accounts_user
+            set date_joined = {now_sql}
+            where date_joined is null
+            """
+        )
+        cursor.execute(
+            """
+            update accounts_user
+            set role = 'ADMIN'
+            where is_superuser = true
+              and (role is null or role = '' or role = 'USER')
+            """
+            if connection.vendor == "postgresql"
+            else """
+            update accounts_user
+            set role = 'ADMIN'
+            where is_superuser = 1
+              and (role is null or role = '' or role = 'USER')
+            """
+        )
+        cursor.execute(
+            """
+            update accounts_user
+            set role = 'DEPARTMENT_USER'
+            where role is null or role = '' or role = 'USER'
+            """
+        )
+        cursor.execute(
+            """
+            create unique index if not exists accounts_user_email_unique
+            on accounts_user(email)
+            """
+        )
+        cursor.execute(
+            """
+            create index if not exists accounts_user_department_id_idx
+            on accounts_user(department_id)
+            """
+        )
+
+        if connection.vendor == "postgresql":
+            cursor.execute(
+                """
+                do $$
+                begin
+                    if not exists (
+                        select 1
+                        from pg_constraint
+                        where conname = 'accounts_user_department_id_fk'
+                    ) then
+                        alter table accounts_user
+                        add constraint accounts_user_department_id_fk
+                        foreign key (department_id)
+                        references accounts_department(id)
+                        deferrable initially deferred;
+                    end if;
+                end $$;
+                """
+            )
+
+        self._drop_column_if_exists(cursor, "accounts_user", "username")
+
+        remaining_problems = self._schema_problems(
+            cursor,
+            self._app_tables(set(connection.introspection.table_names()), "accounts"),
+            "accounts",
+        )
+        if remaining_problems:
+            self.stdout.write(
+                "accounts: in-place repair incomplete: "
+                + "; ".join(remaining_problems)
+            )
+            return False
+
+        self.stdout.write("accounts: in-place schema repair completed.")
+        return True
+
     def _schema_problems(self, cursor, table_names, app_label):
         problems = []
         app_table_set = set(table_names)
@@ -232,6 +465,14 @@ class Command(BaseCommand):
                     continue
 
                 if schema_problems:
+                    if app_label == "accounts" and self._repair_accounts_in_place(
+                        cursor,
+                        table_names,
+                        "incompatible table schema: " + "; ".join(schema_problems),
+                    ):
+                        table_names = set(connection.introspection.table_names())
+                        continue
+
                     table_names = self._reset_app(
                         cursor,
                         table_names,
