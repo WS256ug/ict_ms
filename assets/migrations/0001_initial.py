@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('accounts', '0002_alter_user_role'),
+        ("accounts", "0003_create_department_table"),
     ]
 
     operations = [
