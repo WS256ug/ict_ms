@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('accounts', '0001_initial'),
+        ('accounts', '0002_alter_user_role'),
     ]
 
     operations = [
@@ -40,19 +40,41 @@ class Migration(migrations.Migration):
                 ('purchase_date', models.DateField(blank=True, null=True)),
                 ('warranty_expiry', models.DateField(blank=True, null=True)),
                 ('purchase_cost', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
-                ('status', models.CharField(choices=[('ACTIVE', 'Active'), ('UNDER_MAINTENANCE', 'Under Maintenance'), ('FAULTY', 'Faulty'), ('DISPOSED', 'Disposed')], default='ACTIVE', max_length=20)),
+                ('status', models.CharField(
+                    choices=[
+                        ('ACTIVE', 'Active'),
+                        ('UNDER_MAINTENANCE', 'Under Maintenance'),
+                        ('FAULTY', 'Faulty'),
+                        ('DISPOSED', 'Disposed')
+                    ],
+                    default='ACTIVE',
+                    max_length=20
+                )),
                 ('notes', models.TextField(blank=True, null=True)),
                 ('image', models.ImageField(blank=True, null=True, upload_to='assets/images/')),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('department', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='assets', to='accounts.department')),
-                ('category', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='assets', to='assets.assetcategory')),
+                ('department', models.ForeignKey(
+                    null=True,
+                    on_delete=django.db.models.deletion.SET_NULL,
+                    related_name='assets',
+                    to='accounts.department'
+                )),
+                ('category', models.ForeignKey(
+                    on_delete=django.db.models.deletion.PROTECT,
+                    related_name='assets',
+                    to='assets.assetcategory'
+                )),
             ],
             options={
                 'verbose_name': 'Asset',
                 'verbose_name_plural': 'Assets',
                 'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['asset_tag'], name='assets_asse_asset_t_42b762_idx'), models.Index(fields=['status'], name='assets_asse_status_347ce9_idx'), models.Index(fields=['department'], name='assets_asse_departm_eda949_idx')],
+                'indexes': [
+                    models.Index(fields=['asset_tag'], name='assets_asse_asset_t_42b762_idx'),
+                    models.Index(fields=['status'], name='assets_asse_status_347ce9_idx'),
+                    models.Index(fields=['department'], name='assets_asse_departm_eda949_idx'),
+                ],
             },
         ),
     ]
