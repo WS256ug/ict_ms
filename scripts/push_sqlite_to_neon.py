@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,6 +37,21 @@ DB_ENV_NAMES = (
     "PGHOST",
     "PGPORT",
 )
+POSTGRES_URL_ENV_NAMES = {
+    "DATABASE_URL",
+    "NEON_DATABASE_URL",
+    "POSTGRES_URL",
+    "POSTGRES_URL_NON_POOLING",
+    "POSTGRES_PRISMA_URL",
+}
+POSTGRES_SCHEMES = {
+    "postgres",
+    "postgresql",
+    "pgsql",
+    "postgis",
+    "timescale",
+    "timescalegis",
+}
 COMMON_DUMPDATA_ARGS = (
     "dumpdata",
     "--natural-foreign",
@@ -89,6 +105,32 @@ def build_env_for_target(database_url: str) -> dict[str, str]:
     env["DATABASE_URL"] = database_url
     env.setdefault("DATABASE_SSL_REQUIRE", "1")
     return env
+
+
+def normalize_database_url(database_url: str) -> str:
+    database_url = database_url.strip().strip('"').strip("'")
+    if "=" in database_url:
+        name, value = database_url.split("=", 1)
+        if name.strip().upper() in POSTGRES_URL_ENV_NAMES:
+            database_url = value.strip().strip('"').strip("'")
+    return database_url
+
+
+def validate_database_url(database_url: str) -> bool:
+    parsed = urlsplit(database_url)
+    if parsed.scheme.lower() not in POSTGRES_SCHEMES or not parsed.netloc:
+        shown_scheme = parsed.scheme or "missing"
+        print(
+            "Invalid Neon/Postgres URL. It must start with postgresql:// "
+            "or postgres:// and include the host and database name.\n"
+            f"Detected scheme: {shown_scheme}\n\n"
+            "PowerShell example:\n"
+            "$env:NEON_DATABASE_URL='postgresql://USER:PASSWORD@HOST/DB?sslmode=require'\n"
+            ".\\venv\\Scripts\\python.exe scripts\\push_sqlite_to_neon.py --flush-target",
+            file=sys.stderr,
+        )
+        return False
+    return True
 
 
 def run_manage(args: list[str], env: dict[str, str]) -> None:
@@ -155,12 +197,16 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
 
+    args.database_url = normalize_database_url(args.database_url)
+
     if not args.database_url:
         print(
             "Missing Neon/Postgres URL. Set NEON_DATABASE_URL or pass "
             "--database-url.",
             file=sys.stderr,
         )
+        return 2
+    if not validate_database_url(args.database_url):
         return 2
 
     if args.flush_target and args.append:
