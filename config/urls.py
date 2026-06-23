@@ -6,7 +6,7 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.urls import include, path
 
 from accounts.forms import EmailAuthenticationForm
-from core.views import landing_page
+from core.views import health_check, landing_page
 
 login_view = auth_views.LoginView.as_view(
     template_name='registration/login.html',
@@ -16,6 +16,7 @@ login_view = auth_views.LoginView.as_view(
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('health/', health_check, name='health'),
     path('', login_view, name='home'),
     path('login/', login_view, name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),

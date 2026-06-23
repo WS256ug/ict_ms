@@ -1,10 +1,14 @@
 from datetime import timedelta
 
 from django.contrib.auth.decorators import login_required
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
 from django.db.models import Count
 from django.db.utils import OperationalError, ProgrammingError
+from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
+from django.views.decorators.http import require_GET
 
 from accounts.models import Department, User
 from assets.models import (
@@ -18,6 +22,58 @@ from assets.models import (
 )
 from maintenance.models import MaintenanceLog, MaintenanceSchedule
 from tickets.models import FaultTicket
+
+
+@require_GET
+def health_check(request):
+    payload = {"ok": True}
+
+    try:
+        connection.ensure_connection()
+    except Exception as exc:
+        return JsonResponse(
+            {
+                "ok": False,
+                "database": "unavailable",
+                "error": exc.__class__.__name__,
+            },
+            status=503,
+        )
+
+    payload["database"] = "ok"
+
+    try:
+        executor = MigrationExecutor(connection)
+        plan = executor.migration_plan(executor.loader.graph.leaf_nodes())
+    except Exception as exc:
+        return JsonResponse(
+            {
+                "ok": False,
+                "database": "ok",
+                "migrations": "unknown",
+                "error": exc.__class__.__name__,
+            },
+            status=503,
+        )
+
+    pending = [
+        f"{migration.app_label}.{migration.name}"
+        for migration, backwards in plan
+        if not backwards
+    ]
+    if pending:
+        payload.update(
+            {
+                "ok": False,
+                "migrations": "pending",
+                "pending_migration_count": len(pending),
+                "pending_migrations": pending[:20],
+            }
+        )
+        return JsonResponse(payload, status=503)
+
+    payload["migrations"] = "ok"
+    return JsonResponse(payload)
 
 
 def _safe_count(source):

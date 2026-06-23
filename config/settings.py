@@ -35,6 +35,14 @@ def _env_list(name, default=""):
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def _env_first(*names, default=""):
+    for name in names:
+        value = env(name, default="")
+        if value:
+            return value
+    return default
+
+
 def _append_unique(items, *values):
     for value in values:
         if value and value not in items:
@@ -53,8 +61,9 @@ def _env_host(name):
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env(
+SECRET_KEY = _env_first(
     "DJANGO_SECRET_KEY",
+    "SECRET_KEY",
     default="django-insecure-bk2v%qzc=r4xn^-@2=2bziaw-1ggy0!7jcsa@(+d1+xr#2z8(^",
 )
 
