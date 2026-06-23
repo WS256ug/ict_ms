@@ -63,6 +63,10 @@ def _env_host(name):
     return value.split("/", 1)[0]
 
 
+def _database_url_needs_ssl(database_url):
+    return not database_url.lower().startswith("sqlite")
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
@@ -208,7 +212,11 @@ if DATABASE_URL:
             DATABASE_URL,
             conn_max_age=600,
             conn_health_checks=True,
-            ssl_require=_env_bool("DATABASE_SSL_REQUIRE", default=not DEBUG),
+            ssl_require=(
+                _env_bool("DATABASE_SSL_REQUIRE", default=not DEBUG)
+                if _database_url_needs_ssl(DATABASE_URL)
+                else False
+            ),
         )
     }
 elif _env_first("POSTGRES_DATABASE", "POSTGRES_DB", "PGDATABASE"):
