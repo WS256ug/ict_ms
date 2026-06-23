@@ -43,6 +43,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write("=== Pre-migration diagnostics ===")
+        call_command("db_diagnostics", app="accounts")
         call_command("db_diagnostics", app="assets")
 
         self.stdout.write("\n=== Migration plan ===")
@@ -61,8 +62,9 @@ class Command(BaseCommand):
             self._write_exception_chain(exc)
 
             if connection.vendor == "postgresql":
-                self.stderr.write("\n=== Post-failure asset diagnostics ===")
+                self.stderr.write("\n=== Post-failure diagnostics ===")
                 try:
+                    call_command("db_diagnostics", app="accounts")
                     call_command("db_diagnostics", app="assets")
                 except Exception as diagnostics_exc:
                     self.stderr.write(
