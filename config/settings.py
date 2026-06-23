@@ -50,7 +50,7 @@ ALLOWED_HOSTS = _env_list(
     default=(
         "127.0.0.1,"
         "localhost,"
-        "https://ict-ms.vercel.app/",
+        "https://ict-ms.vercel.app/,"
         "[::1],"
         "DESKTOP-T7IA860,"
         "10.10.2.129,"
