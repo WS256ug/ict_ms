@@ -129,6 +129,16 @@ VERCEL_HOSTS = [
     )
     if host
 ]
+CSRF_TRUSTED_ORIGINS = _env_list_first(
+    "DJANGO_CSRF_TRUSTED_ORIGINS",
+    "CSRF_TRUSTED_ORIGINS",
+    default=(
+        "https://ict-ms.vercel.app,"
+        "https://*.vercel.app,"
+        "https://ictms.kabashug.com,"
+        "https://www.ictms.kabashug.com"
+    ),
+)
 RAILWAY_HOSTS = [
     host
     for host in (
