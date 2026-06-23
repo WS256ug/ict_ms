@@ -94,6 +94,7 @@ ALLOWED_HOSTS = _env_list_first(
     default=(
         "127.0.0.1,"
         "localhost,"
+        'ictms-production.up.railway.app,'
         "ict-ms.vercel.app,"
         "ict-8zpvb95rg-ws-teams.vercel.app,"
         ".vercel.app,"
