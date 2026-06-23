@@ -10,22 +10,26 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
-import os
 from pathlib import Path
+
+from decouple import AutoConfig
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+env = AutoConfig(search_path=BASE_DIR)
 
 
 def _env_bool(name, default=False):
-    value = os.getenv(name)
+    value = env(name, default=None)
     if value is None:
         return default
+    if isinstance(value, bool):
+        return value
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _env_list(name, default=""):
-    value = os.getenv(name, default)
+    value = env(name, default=default)
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
@@ -33,9 +37,9 @@ def _env_list(name, default=""):
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv(
+SECRET_KEY = env(
     "DJANGO_SECRET_KEY",
-    "django-insecure-bk2v%qzc=r4xn^-@2=2bziaw-1ggy0!7jcsa@(+d1+xr#2z8(^",
+    default="django-insecure-bk2v%qzc=r4xn^-@2=2bziaw-1ggy0!7jcsa@(+d1+xr#2z8(^",
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -44,6 +48,7 @@ DEBUG = _env_bool("DJANGO_DEBUG", default=True)
 ALLOWED_HOSTS = _env_list(
     "DJANGO_ALLOWED_HOSTS",
     default=(
+        "*",
         "127.0.0.1,"
         "localhost,"
         "[::1],"
@@ -279,11 +284,17 @@ JAZZMIN_UI_TWEAKS = {
     "actions_sticky_top": False,
 }
 EASY_SEND_SMS_ENABLED = _env_bool("EASY_SEND_SMS_ENABLED", default=False)
-EASY_SEND_SMS_API_KEY = os.getenv("EASY_SEND_SMS_API_KEY") or os.getenv("EASYSENDSMS_API_KEY", "")
-EASY_SEND_SMS_SENDER_ID = os.getenv("EASY_SEND_SMS_SENDER_ID", "")
-EASY_SEND_SMS_BASE_URL = os.getenv(
-    "EASY_SEND_SMS_BASE_URL",
-    "https://restapi.easysendsms.app/v1/rest/sms/send",
+EASY_SEND_SMS_API_KEY = env("EASY_SEND_SMS_API_KEY", default="") or env(
+    "EASYSENDSMS_API_KEY",
+    default="",
 )
-EASY_SEND_SMS_TIMEOUT = int(os.getenv("EASY_SEND_SMS_TIMEOUT", "15"))
-EASY_SEND_SMS_DEFAULT_COUNTRY_CODE = os.getenv("EASY_SEND_SMS_DEFAULT_COUNTRY_CODE", "")
+EASY_SEND_SMS_SENDER_ID = env("EASY_SEND_SMS_SENDER_ID", default="")
+EASY_SEND_SMS_BASE_URL = env(
+    "EASY_SEND_SMS_BASE_URL",
+    default="https://restapi.easysendsms.app/v1/rest/sms/send",
+)
+EASY_SEND_SMS_TIMEOUT = env("EASY_SEND_SMS_TIMEOUT", default=15, cast=int)
+EASY_SEND_SMS_DEFAULT_COUNTRY_CODE = env(
+    "EASY_SEND_SMS_DEFAULT_COUNTRY_CODE",
+    default="",
+)

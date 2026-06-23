@@ -21,6 +21,7 @@ node_modules/
 # Environment and secrets
 .env
 .env.*
+!.env.example
 
 # Editor and OS files
 .vscode/

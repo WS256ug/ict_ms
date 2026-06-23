@@ -3,8 +3,9 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.checks import Error, Warning
 from django.core.management import call_command
-from django.test import TestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.utils import timezone
 
 from accounts.models import Department
@@ -12,6 +13,40 @@ from assets.models import Asset, AssetAssignment, AssetCategory, AssetType
 from tickets.models import FaultTicket
 
 from .models import SMSNotificationLog
+from .checks import check_easy_send_sms_settings
+
+
+class SMSConfigurationCheckTests(SimpleTestCase):
+    @override_settings(EASY_SEND_SMS_ENABLED=False)
+    def test_disabled_integration_has_no_configuration_errors(self):
+        self.assertEqual(check_easy_send_sms_settings(None), [])
+
+    @override_settings(
+        EASY_SEND_SMS_ENABLED=True,
+        EASY_SEND_SMS_API_KEY="",
+        EASY_SEND_SMS_SENDER_ID="",
+        EASY_SEND_SMS_DEFAULT_COUNTRY_CODE="",
+    )
+    def test_enabled_integration_requires_credentials_and_country_code(self):
+        issues = check_easy_send_sms_settings(None)
+
+        self.assertEqual(len(issues), 1)
+        self.assertIsInstance(issues[0], Error)
+        self.assertEqual(issues[0].id, "notifications.E001")
+
+    @override_settings(
+        EASY_SEND_SMS_ENABLED=True,
+        EASY_SEND_SMS_API_KEY="test-api-key",
+        EASY_SEND_SMS_SENDER_ID="ICTMS",
+        EASY_SEND_SMS_DEFAULT_COUNTRY_CODE="254",
+        EASY_SEND_SMS_BASE_URL="http://sms.example.com/send",
+    )
+    def test_enabled_integration_warns_for_non_https_endpoint(self):
+        issues = check_easy_send_sms_settings(None)
+
+        self.assertEqual(len(issues), 1)
+        self.assertIsInstance(issues[0], Warning)
+        self.assertEqual(issues[0].id, "notifications.W001")
 
 
 @override_settings(
