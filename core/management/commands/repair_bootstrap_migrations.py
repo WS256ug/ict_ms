@@ -7,6 +7,36 @@ REQUIRED_INITIAL_TABLES = {
     "assets": {"assets_asset", "assets_assetcategory"},
 }
 
+REQUIRED_TABLE_COLUMNS = {
+    "accounts_department": {
+        "id",
+        "name",
+        "code",
+        "description",
+        "created_at",
+        "updated_at",
+    },
+    "accounts_user": {
+        "id",
+        "password",
+        "is_superuser",
+        "email",
+        "first_name",
+        "last_name",
+        "phone_number",
+        "role",
+        "department_id",
+        "is_active",
+        "is_staff",
+        "date_joined",
+        "last_login",
+    },
+}
+
+INCOMPATIBLE_TABLE_COLUMNS = {
+    "accounts_user": {"username"},
+}
+
 DEPENDENT_APPS = {
     "accounts": (
         "admin",
@@ -64,6 +94,38 @@ class Command(BaseCommand):
             cascade = " cascade" if connection.vendor == "postgresql" else ""
             cursor.execute(f"drop table {quoted_table}{cascade}")
             self.stdout.write(f"{app_label}: dropped empty table {table_name}.")
+
+    def _table_columns(self, cursor, table_name):
+        description = connection.introspection.get_table_description(cursor, table_name)
+        return {column.name for column in description}
+
+    def _schema_problems(self, cursor, table_names, app_label):
+        problems = []
+        app_table_set = set(table_names)
+
+        for table_name, required_columns in REQUIRED_TABLE_COLUMNS.items():
+            if table_name not in app_table_set:
+                continue
+            if not table_name.startswith(f"{app_label}_"):
+                continue
+
+            columns = self._table_columns(cursor, table_name)
+            missing_columns = sorted(required_columns - columns)
+            if missing_columns:
+                problems.append(
+                    f"{table_name} missing column(s): {', '.join(missing_columns)}"
+                )
+
+            incompatible_columns = sorted(
+                INCOMPATIBLE_TABLE_COLUMNS.get(table_name, set()) & columns
+            )
+            if incompatible_columns:
+                problems.append(
+                    f"{table_name} has incompatible legacy column(s): "
+                    f"{', '.join(incompatible_columns)}"
+                )
+
+        return problems
 
     def _app_tables(self, table_names, app_label):
         exact_tables = EXACT_APP_TABLES.get(app_label, set())
@@ -149,6 +211,7 @@ class Command(BaseCommand):
                 required_tables = REQUIRED_INITIAL_TABLES.get(app_label, set())
                 missing_required_tables = sorted(required_tables - set(app_tables))
                 migration_names = self._migration_names(cursor, app_label)
+                schema_problems = self._schema_problems(cursor, app_tables, app_label)
 
                 if not migration_names:
                     self.stdout.write(
@@ -163,6 +226,17 @@ class Command(BaseCommand):
                         app_label,
                         "missing required initial table(s): "
                         f"{', '.join(missing_required_tables)}",
+                    )
+                    reset_roots.append(app_label)
+                    forced_dependents.update(self._dependent_apps([app_label]))
+                    continue
+
+                if schema_problems:
+                    table_names = self._reset_app(
+                        cursor,
+                        table_names,
+                        app_label,
+                        "incompatible table schema: " + "; ".join(schema_problems),
                     )
                     reset_roots.append(app_label)
                     forced_dependents.update(self._dependent_apps([app_label]))
