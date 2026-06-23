@@ -71,6 +71,15 @@ def _database_url_needs_ssl(database_url):
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 RUNNING_ON_VERCEL = _env_bool("VERCEL", default=False) or bool(env("VERCEL_ENV", default=""))
+RUNNING_ON_RAILWAY = bool(
+    _env_first(
+        "RAILWAY_ENVIRONMENT",
+        "RAILWAY_PROJECT_ID",
+        "RAILWAY_SERVICE_ID",
+        "RAILWAY_DEPLOYMENT_ID",
+    )
+)
+IS_DEPLOYED = RUNNING_ON_VERCEL or RUNNING_ON_RAILWAY
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = _env_first(
@@ -78,15 +87,15 @@ SECRET_KEY = _env_first(
     "SECRET_KEY",
     "SECRETE_KEY",
 )
-if RUNNING_ON_VERCEL and not SECRET_KEY:
+if IS_DEPLOYED and not SECRET_KEY:
     raise ImproperlyConfigured(
-        "Set SECRET_KEY or DJANGO_SECRET_KEY in Vercel Environment Variables."
+        "Set SECRET_KEY or DJANGO_SECRET_KEY in your deployment environment variables."
     )
 if not SECRET_KEY:
     SECRET_KEY = "django-insecure-bk2v%qzc=r4xn^-@2=2bziaw-1ggy0!7jcsa@(+d1+xr#2z8(^"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = _env_bool("DJANGO_DEBUG", default=_env_bool("DEBUG", default=not RUNNING_ON_VERCEL))
+DEBUG = _env_bool("DJANGO_DEBUG", default=_env_bool("DEBUG", default=not IS_DEPLOYED))
 
 ALLOWED_HOSTS = _env_list_first(
     "DJANGO_ALLOWED_HOSTS",
@@ -94,15 +103,16 @@ ALLOWED_HOSTS = _env_list_first(
     default=(
         "127.0.0.1,"
         "localhost,"
-        'ictms-production.up.railway.app,'
-        #"ict-ms.vercel.app,"
-        #"ict-8zpvb95rg-ws-teams.vercel.app,"
-        #".vercel.app,"
+        "ictms-production.up.railway.app,"
+        ".up.railway.app,"
+        "ict-ms.vercel.app,"
+        "ict-8zpvb95rg-ws-teams.vercel.app,"
+        ".vercel.app,"
         "[::1],"
         "DESKTOP-T7IA860,"
         "10.10.2.129,"
-        #"ictms.kabashug.com,"
-        #"www.ictms.kabashug.com"
+        "ictms.kabashug.com,"
+        "www.ictms.kabashug.com"
     ),
 )
 
@@ -115,7 +125,17 @@ VERCEL_HOSTS = [
     )
     if host
 ]
-_append_unique(ALLOWED_HOSTS, *VERCEL_HOSTS)
+RAILWAY_HOSTS = [
+    host
+    for host in (
+        "ictms-production.up.railway.app",
+        ".up.railway.app",
+        _env_host("RAILWAY_PUBLIC_DOMAIN"),
+        _env_host("RAILWAY_STATIC_URL"),
+    )
+    if host
+]
+_append_unique(ALLOWED_HOSTS, *VERCEL_HOSTS, *RAILWAY_HOSTS)
 
 CSRF_TRUSTED_ORIGINS = _env_list_first(
     "DJANGO_CSRF_TRUSTED_ORIGINS",
@@ -124,13 +144,15 @@ CSRF_TRUSTED_ORIGINS = _env_list_first(
         "https://ict-ms.vercel.app,"
         "https://ict-8zpvb95rg-ws-teams.vercel.app,"
         "https://*.vercel.app,"
+        "https://ictms-production.up.railway.app,"
+        "https://*.up.railway.app,"
         "https://ictms.kabashug.com,"
         "https://www.ictms.kabashug.com"
     ),
 )
 _append_unique(
     CSRF_TRUSTED_ORIGINS,
-    *(f"https://{host}" for host in VERCEL_HOSTS),
+    *(f"https://{host}" for host in VERCEL_HOSTS + RAILWAY_HOSTS if not host.startswith(".")),
 )
 
 
@@ -233,9 +255,9 @@ elif _env_first("POSTGRES_DATABASE", "POSTGRES_DB", "PGDATABASE"):
             "CONN_HEALTH_CHECKS": True,
         }
     }
-elif RUNNING_ON_VERCEL:
+elif IS_DEPLOYED:
     raise ImproperlyConfigured(
-        "Set DATABASE_URL or POSTGRES_URL to a hosted database on Vercel. "
+        "Set DATABASE_URL or POSTGRES_URL to a hosted database. "
         "SQLite cannot be used reliably in the serverless filesystem."
     )
 else:
@@ -310,7 +332,7 @@ LOGOUT_REDIRECT_URL = 'login'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = _env_bool(
     "DJANGO_SECURE_SSL_REDIRECT",
-    default=RUNNING_ON_VERCEL and not DEBUG,
+    default=IS_DEPLOYED and not DEBUG,
 )
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
