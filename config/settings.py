@@ -71,19 +71,6 @@ def _database_url_needs_ssl(database_url):
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 RUNNING_ON_VERCEL = _env_bool("VERCEL", default=False) or bool(env("VERCEL_ENV", default=""))
-RUNNING_ON_RAILWAY = bool(
-    _env_first(
-        "RAILWAY_ENVIRONMENT",
-        "RAILWAY_ENVIRONMENT_NAME",
-        "RAILWAY_ENVIRONMENT_ID",
-        "RAILWAY_PROJECT_ID",
-        "RAILWAY_SERVICE_ID",
-        "RAILWAY_DEPLOYMENT_ID",
-        "RAILWAY_PUBLIC_DOMAIN",
-        "RAILWAY_PRIVATE_DOMAIN",
-    )
-)
-IS_DEPLOYED = RUNNING_ON_VERCEL or RUNNING_ON_RAILWAY
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = _env_first(
@@ -91,7 +78,7 @@ SECRET_KEY = _env_first(
     "SECRET_KEY",
     "SECRETE_KEY",
 )
-if IS_DEPLOYED and not SECRET_KEY:
+if RUNNING_ON_VERCEL and not SECRET_KEY:
     raise ImproperlyConfigured(
         "Set SECRET_KEY or DJANGO_SECRET_KEY in your deployment environment variables."
     )
@@ -99,7 +86,7 @@ if not SECRET_KEY:
     SECRET_KEY = "django-insecure-bk2v%qzc=r4xn^-@2=2bziaw-1ggy0!7jcsa@(+d1+xr#2z8(^"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = _env_bool("DJANGO_DEBUG", default=_env_bool("DEBUG", default=not IS_DEPLOYED))
+DEBUG = _env_bool("DJANGO_DEBUG", default=_env_bool("DEBUG", default=not RUNNING_ON_VERCEL))
 
 ALLOWED_HOSTS = _env_list_first(
     "DJANGO_ALLOWED_HOSTS",
@@ -107,8 +94,6 @@ ALLOWED_HOSTS = _env_list_first(
     default=(
         "127.0.0.1,"
         "localhost,"
-        "ictms-production.up.railway.app,"
-        ".up.railway.app,"
         "ict-ms.vercel.app,"
         "ict-8zpvb95rg-ws-teams.vercel.app,"
         ".vercel.app,"
@@ -139,41 +124,16 @@ CSRF_TRUSTED_ORIGINS = _env_list_first(
         "https://www.ictms.kabashug.com"
     ),
 )
-RAILWAY_HOSTS = [
-    host
-    for host in (
-        "ictms-production.up.railway.app",
-        ".up.railway.app",
-        _env_host("RAILWAY_PUBLIC_DOMAIN"),
-        _env_host("RAILWAY_STATIC_URL"),
-    )
-    if host
-]
-_append_unique(ALLOWED_HOSTS, *VERCEL_HOSTS, *RAILWAY_HOSTS)
-
-CSRF_TRUSTED_ORIGINS = _env_list_first(
-    "DJANGO_CSRF_TRUSTED_ORIGINS",
-    "CSRF_TRUSTED_ORIGINS",
-    default=(
-        "https://ict-ms.vercel.app,"
-        "https://ict-8zpvb95rg-ws-teams.vercel.app,"
-        "https://*.vercel.app,"
-        "https://ictms-production.up.railway.app,"
-        "https://*.up.railway.app,"
-        "https://ictms.kabashug.com,"
-        "https://www.ictms.kabashug.com"
-    ),
-)
+_append_unique(ALLOWED_HOSTS, *VERCEL_HOSTS)
 _append_unique(
     CSRF_TRUSTED_ORIGINS,
-    *(f"https://{host}" for host in VERCEL_HOSTS + RAILWAY_HOSTS if not host.startswith(".")),
+    *(f"https://{host}" for host in VERCEL_HOSTS),
 )
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -269,7 +229,7 @@ elif _env_first("POSTGRES_DATABASE", "POSTGRES_DB", "PGDATABASE"):
             "CONN_HEALTH_CHECKS": True,
         }
     }
-elif IS_DEPLOYED:
+elif RUNNING_ON_VERCEL:
     raise ImproperlyConfigured(
         "Set DATABASE_URL or POSTGRES_URL to a hosted database. "
         "SQLite cannot be used reliably in the serverless filesystem."
@@ -346,7 +306,7 @@ LOGOUT_REDIRECT_URL = 'login'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = _env_bool(
     "DJANGO_SECURE_SSL_REDIRECT",
-    default=IS_DEPLOYED and not DEBUG,
+    default=RUNNING_ON_VERCEL and not DEBUG,
 )
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
@@ -372,83 +332,6 @@ CORS_ALLOWED_ORIGINS = _env_list(
     default="http://localhost:8000",
 )
 
-JAZZMIN_SETTINGS = {
-    # Title of the window
-    "site_title": "ICT-MS",
-    # Title on the login screen (19 chars max)
-    "site_header": "ICT-MS",
-    # Title on the brand (19 chars max)
-    "site_brand": "ICT-MS",
-    "site_logo": "logo.png",
-    # Logo to use for login form
-    "login_logo": "logo.png",
-    #"custom_css": "css/admin_custom.css",
-    # CSS classes that are applied to the logo above
-    "site_logo_classes": "img-circle",
-    # Relative path to a favicon for your site
-    "site_icon": "assets/images/favicon.svg",
-    # Welcome text on the login screen
-    "welcome_sign": "WELCOME TO ICT MANAGEMENT SYSTEM",
-    # Copyright on the footer
-    "copyright": "ICT-MS",
-    "user_avatar": None,
-    "custom_css": "css/jazzmin-custom.css",
-    "show_ui_builder": False,
-    "icons": {
-        "auth": "fas fa-users-cog",
-        "auth.group": "fas fa-user-tag",
-        "accounts": "fas fa-users",
-        "accounts.user": "fas fa-user-shield",
-        "accounts.department": "fas fa-building",
-        "assets": "fas fa-boxes",
-        "assets.asset": "fas fa-laptop",
-        "assets.assetcategory": "fas fa-tags",
-        "checkouts": "fas fa-people-carry",
-        "checkouts.checkoutrequest": "fas fa-clipboard-check",
-        "checkouts.gpslocation": "fas fa-map-marker-alt",
-        "checkouts.geofencealert": "fas fa-bell",
-        "checkouts.checkouthistory": "fas fa-history",
-        "tickets": "fas fa-ticket-alt",
-        "tickets.faultticket": "fas fa-exclamation-circle",
-        "tickets.ticketcomment": "fas fa-comments",
-        "tickets.ticketattachment": "fas fa-paperclip",
-        "maintenance": "fas fa-tools",
-        "maintenance.maintenancelog": "fas fa-wrench",
-        "maintenance.maintenanceschedule": "fas fa-calendar-check",
-        "iot_monitoring": "fas fa-microchip",
-        "notifications": "fas fa-bell",
-        "notifications.notification": "fas fa-envelope",
-        "notifications.alert": "fas fa-exclamation-triangle",
-        "reports": "fas fa-chart-line",
-        "core": "fas fa-cubes",
-    },
-}
-
-JAZZMIN_UI_TWEAKS = {
-    "theme": "flatly",
-    "navbar_small_text": False,
-    "footer_small_text": False,
-    "navbar_fixed": True,
-    "footer_fixed": False,
-    "sidebar_fixed": True,
-    "sidebar_disable_expand": False,
-    "sidebar_nav_child_indent": True,
-    "sidebar_nav_compact_style": False,
-    "sidebar_nav_legacy_style": False,
-    "sidebar_nav_flat_style": True,
-    "body_small_text": False,
-    "footer_small_text": True,
-    "navbar_small_text": False,
-    "button_classes": {
-        "primary": "btn-primary",
-        "secondary": "btn-secondary",
-        "info": "btn-info",
-        "warning": "btn-warning",
-        "danger": "btn-danger",
-        "success": "btn-success",
-    },
-    "actions_sticky_top": False,
-}
 EASY_SEND_SMS_ENABLED = _env_bool("EASY_SEND_SMS_ENABLED", default=False)
 EASY_SEND_SMS_API_KEY = env("EASY_SEND_SMS_API_KEY", default="") or env(
     "EASYSENDSMS_API_KEY",

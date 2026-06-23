@@ -1,4 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "python manage.py deploy_migrate && python manage.py ensure_superuser && python manage.py collectstatic --noinput"
+  "buildCommand": "python manage.py deploy_migrate && python manage.py ensure_superuser --required --verify && python manage.py collectstatic --noinput"
 }

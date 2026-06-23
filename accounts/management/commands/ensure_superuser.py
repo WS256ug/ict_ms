@@ -13,6 +13,11 @@ class Command(BaseCommand):
             action="store_true",
             help="Fail if the required superuser environment variables are missing.",
         )
+        parser.add_argument(
+            "--verify",
+            action="store_true",
+            help="After saving, verify that the configured password authenticates.",
+        )
 
     def _env_first(self, *names):
         import os
@@ -91,3 +96,21 @@ class Command(BaseCommand):
 
         action = "Created" if created else "Updated"
         self.stdout.write(self.style.SUCCESS(f"{action} deploy superuser: {email}"))
+
+        if options["verify"]:
+            user.refresh_from_db()
+            password_matches = user.check_password(password)
+            self.stdout.write(
+                "Deploy superuser check: "
+                f"email={email}, "
+                f"exists=True, "
+                f"active={user.is_active}, "
+                f"staff={user.is_staff}, "
+                f"superuser={user.is_superuser}, "
+                f"role={getattr(user, 'role', '')}, "
+                f"password_matches={password_matches}"
+            )
+            if not password_matches:
+                raise CommandError(
+                    "Deploy superuser password verification failed after save."
+                )
