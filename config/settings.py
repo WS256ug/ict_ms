@@ -95,14 +95,14 @@ ALLOWED_HOSTS = _env_list_first(
         "127.0.0.1,"
         "localhost,"
         'ictms-production.up.railway.app,'
-        "ict-ms.vercel.app,"
-        "ict-8zpvb95rg-ws-teams.vercel.app,"
-        ".vercel.app,"
+        #"ict-ms.vercel.app,"
+        #"ict-8zpvb95rg-ws-teams.vercel.app,"
+        #".vercel.app,"
         "[::1],"
         "DESKTOP-T7IA860,"
         "10.10.2.129,"
-        "ictms.kabashug.com,"
-        "www.ictms.kabashug.com"
+        #"ictms.kabashug.com,"
+        #"www.ictms.kabashug.com"
     ),
 )
 
