@@ -48,9 +48,9 @@ DEBUG = _env_bool("DJANGO_DEBUG", default=True)
 ALLOWED_HOSTS = _env_list(
     "DJANGO_ALLOWED_HOSTS",
     default=(
-        "*",
         "127.0.0.1,"
         "localhost,"
+        "https://ict-ms.vercel.app/",
         "[::1],"
         "DESKTOP-T7IA860,"
         "10.10.2.129,"
