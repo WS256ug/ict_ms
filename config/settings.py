@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import sys
 
 import dj_database_url
 from decouple import AutoConfig
@@ -19,6 +20,7 @@ from django.core.exceptions import ImproperlyConfigured
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 env = AutoConfig(search_path=BASE_DIR)
+IS_TESTING = "test" in sys.argv
 
 
 def _env_bool(name, default=False):
@@ -33,6 +35,10 @@ def _env_bool(name, default=False):
 def _env_list(name, default=""):
     value = env(name, default=default)
     return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def _env_list_first(*names, default=""):
+    return [item.strip() for item in _env_first(*names, default=default).split(",") if item.strip()]
 
 
 def _env_first(*names, default=""):
@@ -60,25 +66,33 @@ def _env_host(name):
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
+RUNNING_ON_VERCEL = _env_bool("VERCEL", default=False) or bool(env("VERCEL_ENV", default=""))
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = _env_first(
     "DJANGO_SECRET_KEY",
     "SECRET_KEY",
-    default="django-insecure-bk2v%qzc=r4xn^-@2=2bziaw-1ggy0!7jcsa@(+d1+xr#2z8(^",
+    "SECRETE_KEY",
 )
-
-RUNNING_ON_VERCEL = _env_bool("VERCEL", default=False)
+if RUNNING_ON_VERCEL and not SECRET_KEY:
+    raise ImproperlyConfigured(
+        "Set SECRET_KEY or DJANGO_SECRET_KEY in Vercel Environment Variables."
+    )
+if not SECRET_KEY:
+    SECRET_KEY = "django-insecure-bk2v%qzc=r4xn^-@2=2bziaw-1ggy0!7jcsa@(+d1+xr#2z8(^"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = _env_bool("DJANGO_DEBUG", default=not RUNNING_ON_VERCEL)
+DEBUG = _env_bool("DJANGO_DEBUG", default=_env_bool("DEBUG", default=not RUNNING_ON_VERCEL))
 
-ALLOWED_HOSTS = _env_list(
+ALLOWED_HOSTS = _env_list_first(
     "DJANGO_ALLOWED_HOSTS",
+    "ALLOWED_HOSTS",
     default=(
         "127.0.0.1,"
         "localhost,"
         "ict-ms.vercel.app,"
         "ict-8zpvb95rg-ws-teams.vercel.app,"
+        ".vercel.app,"
         "[::1],"
         "DESKTOP-T7IA860,"
         "10.10.2.129,"
@@ -98,11 +112,13 @@ VERCEL_HOSTS = [
 ]
 _append_unique(ALLOWED_HOSTS, *VERCEL_HOSTS)
 
-CSRF_TRUSTED_ORIGINS = _env_list(
+CSRF_TRUSTED_ORIGINS = _env_list_first(
     "DJANGO_CSRF_TRUSTED_ORIGINS",
+    "CSRF_TRUSTED_ORIGINS",
     default=(
         "https://ict-ms.vercel.app,"
         "https://ict-8zpvb95rg-ws-teams.vercel.app,"
+        "https://*.vercel.app,"
         "https://ictms.kabashug.com,"
         "https://www.ictms.kabashug.com"
     ),
@@ -146,6 +162,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -178,7 +195,12 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASE_URL = env("DATABASE_URL", default="") or env("POSTGRES_URL", default="")
+DATABASE_URL = _env_first(
+    "DATABASE_URL",
+    "POSTGRES_URL",
+    "POSTGRES_URL_NON_POOLING",
+    "POSTGRES_PRISMA_URL",
+)
 
 if DATABASE_URL:
     DATABASES = {
@@ -188,6 +210,19 @@ if DATABASE_URL:
             conn_health_checks=True,
             ssl_require=_env_bool("DATABASE_SSL_REQUIRE", default=not DEBUG),
         )
+    }
+elif _env_first("POSTGRES_DATABASE", "POSTGRES_DB", "PGDATABASE"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": _env_first("POSTGRES_DATABASE", "POSTGRES_DB", "PGDATABASE"),
+            "USER": _env_first("POSTGRES_USER", "PGUSER"),
+            "PASSWORD": _env_first("POSTGRES_PASSWORD", "PGPASSWORD"),
+            "HOST": _env_first("POSTGRES_HOST", "PGHOST", default="localhost"),
+            "PORT": _env_first("POSTGRES_PORT", "PGPORT", default="5432"),
+            "CONN_MAX_AGE": 600,
+            "CONN_HEALTH_CHECKS": True,
+        }
     }
 elif RUNNING_ON_VERCEL:
     raise ImproperlyConfigured(
@@ -241,16 +276,37 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": (
+            "whitenoise.storage.CompressedManifestStaticFilesStorage"
+            if not DEBUG and not IS_TESTING
+            else "django.contrib.staticfiles.storage.StaticFilesStorage"
+        ),
+    },
+}
 
 # Media files (for asset images, etc.)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Custom user model
 AUTH_USER_MODEL = 'accounts.User'
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = _env_bool(
+    "DJANGO_SECURE_SSL_REDIRECT",
+    default=RUNNING_ON_VERCEL and not DEBUG,
+)
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
 
 # REST Framework settings
 REST_FRAMEWORK = {
