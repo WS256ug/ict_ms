@@ -46,6 +46,13 @@ class Command(BaseCommand):
         call_command("db_diagnostics", app="accounts")
         call_command("db_diagnostics", app="assets")
 
+        self.stdout.write("\n=== Repairing stale bootstrap migration records ===")
+        call_command("repair_bootstrap_migrations", "accounts", "assets")
+
+        self.stdout.write("\n=== Post-repair diagnostics ===")
+        call_command("db_diagnostics", app="accounts")
+        call_command("db_diagnostics", app="assets")
+
         self.stdout.write("\n=== Migration plan ===")
         call_command("showmigrations", plan=True)
 
