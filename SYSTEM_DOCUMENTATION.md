@@ -64,7 +64,7 @@ At a high level, the system follows a classic Django client-server architecture 
   - Rich migration history showing evolution from a simpler asset schema into the current inventory model
 
 - Integration layer:
-  - Easy Send SMS HTTP API for outbound SMS
+  - EgoSMS Comms JSON API for outbound SMS
   - GPS tracker HTTP endpoint for telemetry ingestion
   - Leaflet/OpenStreetMap for browser map rendering
   - QR code generation through the `qrcode` library
@@ -108,7 +108,7 @@ At a high level, the system follows a classic Django client-server architecture 
 External inputs/services:
 
 GPS Tracker Device ---> /iot/gps/ingest/ ---> iot_monitoring
-Easy Send SMS API <--- notifications.sms
+EgoSMS Comms API <--- notifications.sms
 Leaflet/OpenStreetMap <--- asset GPS detail page
 QR Code Library <--- asset QR endpoint
 ```
@@ -234,7 +234,7 @@ There are two related maintenance flows.
   - `STATICFILES_DIRS`, `STATIC_ROOT`, and `MEDIA_ROOT` support uploaded ticket attachments and other media.
   - `REST_FRAMEWORK` is configured, but no public DRF API routes are currently exposed.
   - `CORS_ALLOWED_ORIGINS` exists mainly to support IoT device/browser interactions.
-  - `EASY_SEND_SMS_*` values configure optional SMS delivery.
+  - `EGO_SMS_*` values configure optional SMS delivery.
 - Interaction:
   - used by every app
   - consumed directly by `notifications.sms`
@@ -600,9 +600,8 @@ There are two related maintenance flows.
 - Main components:
   - `SMSResult`: lightweight result object returned by send operations.
   - `normalize_phone_number()`: strips formatting, applies default country code rules, and standardizes storage.
-  - `_message_type()`: chooses ASCII vs Unicode provider type.
-  - `_extract_provider_message_id()`: parses provider response IDs.
-  - `_send_sms_request()`: raw HTTP POST to Easy Send SMS.
+  - `_extract_provider_message_id()`: parses EgoSMS follow-up tracking codes.
+  - `_send_sms_request()`: raw JSON HTTP POST to the EgoSMS Comms API.
   - `send_sms_to_number()`: full orchestration including validation, feature toggle checks, missing-setting checks, provider call, exception handling, and logging.
   - `send_sms_to_user()`: convenience wrapper.
   - `sms_already_sent()`: duplicate-prevention check for one event/object/phone/day.
@@ -1150,12 +1149,13 @@ Why it still matters in documentation:
 ### 7.5 External Service Configuration
 SMS configuration comes from:
 
-- `EASY_SEND_SMS_ENABLED`
-- `EASY_SEND_SMS_API_KEY`
-- `EASY_SEND_SMS_SENDER_ID`
-- `EASY_SEND_SMS_BASE_URL`
-- `EASY_SEND_SMS_TIMEOUT`
-- `EASY_SEND_SMS_DEFAULT_COUNTRY_CODE`
+- `EGO_SMS_ENABLED`
+- `EGO_SMS_USERNAME`
+- `EGO_SMS_API_KEY`
+- `EGO_SMS_SENDER_ID`
+- `EGO_SMS_BASE_URL`
+- `EGO_SMS_TIMEOUT`
+- `EGO_SMS_DEFAULT_COUNTRY_CODE`
 
 ### 7.6 Environment and Deployment Observations
 - The project is development-friendly because it runs on SQLite and uses Django’s built-in auth/session stack.
@@ -1169,12 +1169,15 @@ SMS configuration comes from:
 - Current implementation:
   - tracker devices send telemetry to `/iot/gps/ingest/`
   - authentication uses `device_id` + API key
-  - no firmware source code is stored in this repository
+  - Arduino GPS/GSM firmware is stored in
+    `iot_monitoring/firmware/ictms_gps_tracker/`
+  - the firmware sends fresh coordinates as HTTPS form POST requests
 - Academic interpretation:
-  - the repository contains the server-side IoT ingestion endpoint, not the embedded code for Arduino/GSM/GPS hardware
+  - the repository demonstrates both the Django ingestion service and the
+    embedded Arduino/GSM/GPS integration code
 
 ### 8.2 SMS Integration
-- Easy Send SMS REST endpoint is called using Python’s standard `urllib`
+- EgoSMS Comms JSON endpoint is called using Python’s standard `urllib`
 - every attempt is logged to `SMSNotificationLog`
 - current event types:
   - ticket created

@@ -72,6 +72,22 @@ class GPSIngestViewTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(GPSReading.objects.count(), 0)
 
+    def test_gps_ingest_accepts_post_and_redacts_api_key(self):
+        response = self.client.post(
+            reverse("iot_monitoring:gps_ingest"),
+            data={
+                "id": self.tracker.device_id,
+                "key": "abc123",
+                "lat": "0.347596",
+                "lon": "32.582520",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        reading = GPSReading.objects.get()
+        self.assertIn("key=%5Bredacted%5D", reading.raw_payload)
+        self.assertNotIn("abc123", reading.raw_payload)
+
     def test_asset_detail_view_shows_tracker_summary_and_recent_readings(self):
         reading = GPSReading.objects.create(
             device=self.tracker,

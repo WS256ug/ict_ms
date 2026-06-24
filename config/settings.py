@@ -120,8 +120,8 @@ CSRF_TRUSTED_ORIGINS = _env_list_first(
     default=(
         "https://ict-ms.vercel.app,"
         "https://*.vercel.app,"
-        "https://ictms.kabashug.com,"
-        "https://www.ictms.kabashug.com"
+        #"https://ictms.kabashug.com,"
+        #"https://www.ictms.kabashug.com"
     ),
 )
 _append_unique(ALLOWED_HOSTS, *VERCEL_HOSTS)
@@ -332,18 +332,25 @@ CORS_ALLOWED_ORIGINS = _env_list(
     default="http://localhost:8000",
 )
 
-EASY_SEND_SMS_ENABLED = _env_bool("EASY_SEND_SMS_ENABLED", default=False)
-EASY_SEND_SMS_API_KEY = env("EASY_SEND_SMS_API_KEY", default="") or env(
-    "EASYSENDSMS_API_KEY",
-    default="",
+EGO_SMS_ENABLED = _env_bool("EGO_SMS_ENABLED", default=False)
+EGO_SMS_USERNAME = _env_first(
+    "EGO_SMS_USERNAME",
+    "EGOSMS_USERNAME",
 )
-EASY_SEND_SMS_SENDER_ID = env("EASY_SEND_SMS_SENDER_ID", default="")
-EASY_SEND_SMS_BASE_URL = env(
-    "EASY_SEND_SMS_BASE_URL",
-    default="https://restapi.easysendsms.app/v1/rest/sms/send",
+EGO_SMS_API_KEY = _env_first(
+    "EGO_SMS_API_KEY",
+    "EGOSMS_API_KEY",
 )
-EASY_SEND_SMS_TIMEOUT = env("EASY_SEND_SMS_TIMEOUT", default=15, cast=int)
-EASY_SEND_SMS_DEFAULT_COUNTRY_CODE = env(
-    "EASY_SEND_SMS_DEFAULT_COUNTRY_CODE",
+EGO_SMS_SENDER_ID = _env_first(
+    "EGO_SMS_SENDER_ID",
+    "EGOSMS_SENDER_ID",
+)
+EGO_SMS_BASE_URL = env(
+    "EGO_SMS_BASE_URL",
+    default="https://comms.egosms.co/api/v1/json/",
+)
+EGO_SMS_TIMEOUT = env("EGO_SMS_TIMEOUT", default=15, cast=int)
+EGO_SMS_DEFAULT_COUNTRY_CODE = env(
+    "EGO_SMS_DEFAULT_COUNTRY_CODE",
     default="",
 )

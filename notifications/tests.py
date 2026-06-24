@@ -13,47 +13,65 @@ from assets.models import Asset, AssetAssignment, AssetCategory
 from tickets.models import FaultTicket
 
 from .models import SMSNotificationLog
-from .checks import check_easy_send_sms_settings
+from .checks import check_ego_sms_settings
 
 
 class SMSConfigurationCheckTests(SimpleTestCase):
-    @override_settings(EASY_SEND_SMS_ENABLED=False)
+    @override_settings(EGO_SMS_ENABLED=False)
     def test_disabled_integration_has_no_configuration_errors(self):
-        self.assertEqual(check_easy_send_sms_settings(None), [])
+        self.assertEqual(check_ego_sms_settings(None), [])
 
     @override_settings(
-        EASY_SEND_SMS_ENABLED=True,
-        EASY_SEND_SMS_API_KEY="",
-        EASY_SEND_SMS_SENDER_ID="",
-        EASY_SEND_SMS_DEFAULT_COUNTRY_CODE="",
+        EGO_SMS_ENABLED=True,
+        EGO_SMS_USERNAME="",
+        EGO_SMS_API_KEY="",
+        EGO_SMS_SENDER_ID="",
+        EGO_SMS_DEFAULT_COUNTRY_CODE="",
     )
     def test_enabled_integration_requires_credentials_and_country_code(self):
-        issues = check_easy_send_sms_settings(None)
+        issues = check_ego_sms_settings(None)
 
         self.assertEqual(len(issues), 1)
         self.assertIsInstance(issues[0], Error)
         self.assertEqual(issues[0].id, "notifications.E001")
 
     @override_settings(
-        EASY_SEND_SMS_ENABLED=True,
-        EASY_SEND_SMS_API_KEY="test-api-key",
-        EASY_SEND_SMS_SENDER_ID="ICTMS",
-        EASY_SEND_SMS_DEFAULT_COUNTRY_CODE="254",
-        EASY_SEND_SMS_BASE_URL="http://sms.example.com/send",
+        EGO_SMS_ENABLED=True,
+        EGO_SMS_USERNAME="test-user",
+        EGO_SMS_API_KEY="test-api-key",
+        EGO_SMS_SENDER_ID="ICTMS",
+        EGO_SMS_DEFAULT_COUNTRY_CODE="256",
+        EGO_SMS_BASE_URL="http://sms.example.com/send",
     )
     def test_enabled_integration_warns_for_non_https_endpoint(self):
-        issues = check_easy_send_sms_settings(None)
+        issues = check_ego_sms_settings(None)
 
         self.assertEqual(len(issues), 1)
         self.assertIsInstance(issues[0], Warning)
         self.assertEqual(issues[0].id, "notifications.W001")
 
+    @override_settings(
+        EGO_SMS_ENABLED=True,
+        EGO_SMS_USERNAME="test-user",
+        EGO_SMS_API_KEY="test-api-key",
+        EGO_SMS_SENDER_ID="SENDER-TOO-LONG",
+        EGO_SMS_DEFAULT_COUNTRY_CODE="256",
+        EGO_SMS_BASE_URL="https://comms.egosms.co/api/v1/json/",
+    )
+    def test_enabled_integration_warns_for_long_sender_id(self):
+        issues = check_ego_sms_settings(None)
+
+        self.assertEqual(len(issues), 1)
+        self.assertIsInstance(issues[0], Warning)
+        self.assertEqual(issues[0].id, "notifications.W002")
+
 
 @override_settings(
-    EASY_SEND_SMS_ENABLED=True,
-    EASY_SEND_SMS_API_KEY="test-api-key",
-    EASY_SEND_SMS_SENDER_ID="ICTMS",
-    EASY_SEND_SMS_DEFAULT_COUNTRY_CODE="254",
+    EGO_SMS_ENABLED=True,
+    EGO_SMS_USERNAME="test-user",
+    EGO_SMS_API_KEY="test-api-key",
+    EGO_SMS_SENDER_ID="ICTMS",
+    EGO_SMS_DEFAULT_COUNTRY_CODE="256",
 )
 class SMSNotificationTests(TestCase):
     def setUp(self):
@@ -65,7 +83,7 @@ class SMSNotificationTests(TestCase):
             first_name="System",
             last_name="Admin",
             role="ADMIN",
-            phone_number="+254700000001",
+            phone_number="+256700000001",
             department=self.department,
         )
         self.technician = self.user_model.objects.create_user(
@@ -97,7 +115,7 @@ class SMSNotificationTests(TestCase):
 
     @patch(
         "notifications.sms._send_sms_request",
-        return_value={"status": True, "scheduled": False, "messageIds": ["ticket-created-123"]},
+        return_value={"Status": "OK", "MsgFollowUpUniqueCode": "ticket-created-123"},
     )
     def test_creating_fault_ticket_sends_sms_to_admin(self, mocked_sms_request):
         FaultTicket.objects.create(
@@ -112,14 +130,22 @@ class SMSNotificationTests(TestCase):
         mocked_sms_request.assert_called_once()
         sms_log = SMSNotificationLog.objects.get(event_type=SMSNotificationLog.EVENT_TICKET_CREATED)
         self.assertEqual(sms_log.recipient, self.admin)
-        self.assertEqual(sms_log.phone_number, "254700000001")
+        self.assertEqual(sms_log.phone_number, "256700000001")
         self.assertEqual(sms_log.status, SMSNotificationLog.STATUS_SENT)
         self.assertEqual(sms_log.provider_message_id, "ticket-created-123")
         self.assertIn("New fault ticket", sms_log.message)
+        payload = mocked_sms_request.call_args.args[0]
+        self.assertEqual(payload["method"], "SendSms")
+        self.assertEqual(
+            payload["userdata"],
+            {"username": "test-user", "password": "test-api-key"},
+        )
+        self.assertEqual(payload["msgdata"][0]["senderid"], "ICTMS")
+        self.assertEqual(payload["msgdata"][0]["priority"], "0")
 
     @patch(
         "notifications.sms._send_sms_request",
-        return_value={"status": True, "scheduled": False, "messageIds": ["ticket-assigned-456"]},
+        return_value={"Status": "OK", "MsgFollowUpUniqueCode": "ticket-assigned-456"},
     )
     def test_assigning_ticket_sends_sms_to_technician(self, mocked_sms_request):
         ticket = FaultTicket.objects.create(
@@ -140,14 +166,14 @@ class SMSNotificationTests(TestCase):
         mocked_sms_request.assert_called_once()
         sms_log = SMSNotificationLog.objects.get(event_type=SMSNotificationLog.EVENT_TICKET_ASSIGNED)
         self.assertEqual(sms_log.recipient, self.technician)
-        self.assertEqual(sms_log.phone_number, "254700000002")
+        self.assertEqual(sms_log.phone_number, "256700000002")
         self.assertEqual(sms_log.status, SMSNotificationLog.STATUS_SENT)
         self.assertEqual(sms_log.provider_message_id, "ticket-assigned-456")
         self.assertIn(ticket.ticket_id, sms_log.message)
 
     @patch(
         "notifications.sms._send_sms_request",
-        return_value={"status": True, "scheduled": False, "messageIds": ["assignment-overdue-789"]},
+        return_value={"Status": "OK", "MsgFollowUpUniqueCode": "assignment-overdue-789"},
     )
     def test_overdue_assignment_command_sends_one_sms_per_day(self, mocked_sms_request):
         assignment = AssetAssignment.objects.create(
@@ -168,7 +194,7 @@ class SMSNotificationTests(TestCase):
         mocked_sms_request.assert_called_once()
         sms_log = SMSNotificationLog.objects.get(event_type=SMSNotificationLog.EVENT_ASSIGNMENT_OVERDUE)
         self.assertEqual(sms_log.recipient, self.requester)
-        self.assertEqual(sms_log.phone_number, "254700000003")
+        self.assertEqual(sms_log.phone_number, "256700000003")
         self.assertEqual(sms_log.status, SMSNotificationLog.STATUS_SENT)
         self.assertEqual(sms_log.provider_message_id, "assignment-overdue-789")
         self.assertEqual(sms_log.object_id, assignment.pk)

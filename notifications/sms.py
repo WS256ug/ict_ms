@@ -35,7 +35,7 @@ def normalize_phone_number(raw_number):
         return ""
 
     default_country_code = str(
-        getattr(settings, "EASY_SEND_SMS_DEFAULT_COUNTRY_CODE", "") or ""
+        getattr(settings, "EGO_SMS_DEFAULT_COUNTRY_CODE", "") or ""
     ).strip().lstrip("+")
 
     if candidate.startswith("+"):
@@ -48,15 +48,8 @@ def normalize_phone_number(raw_number):
     return NON_DIGIT_RE.sub("", candidate)
 
 
-def _message_type(message):
-    return "0" if message.isascii() else "1"
-
-
 def _extract_provider_message_id(response_data):
-    message_ids = response_data.get("messageIds") or []
-    if not message_ids:
-        return ""
-    return str(message_ids[0]).strip()
+    return str(response_data.get("MsgFollowUpUniqueCode") or "").strip()
 
 
 def _send_sms_request(payload):
@@ -64,19 +57,18 @@ def _send_sms_request(payload):
     request = Request(
         getattr(
             settings,
-            "EASY_SEND_SMS_BASE_URL",
-            "https://restapi.easysendsms.app/v1/rest/sms/send",
+            "EGO_SMS_BASE_URL",
+            "https://comms.egosms.co/api/v1/json/",
         ),
         data=encoded_payload,
         headers={
-            "apikey": getattr(settings, "EASY_SEND_SMS_API_KEY", ""),
             "Content-Type": "application/json",
             "Accept": "application/json",
         },
         method="POST",
     )
 
-    with urlopen(request, timeout=getattr(settings, "EASY_SEND_SMS_TIMEOUT", 15)) as response:
+    with urlopen(request, timeout=getattr(settings, "EGO_SMS_TIMEOUT", 15)) as response:
         return json.loads(response.read().decode("utf-8", errors="replace"))
 
 
@@ -99,11 +91,11 @@ def send_sms_to_number(phone_number, message, *, event_type, recipient=None, rel
         )
         return result
 
-    if not getattr(settings, "EASY_SEND_SMS_ENABLED", False):
+    if not getattr(settings, "EGO_SMS_ENABLED", False):
         result = SMSResult(
             ok=False,
             status=SMSNotificationLog.STATUS_SKIPPED,
-            error_message="Easy Send SMS integration is disabled.",
+            error_message="EgoSMS integration is disabled.",
         )
         _record_sms_result(
             event_type=event_type,
@@ -115,13 +107,15 @@ def send_sms_to_number(phone_number, message, *, event_type, recipient=None, rel
         )
         return result
 
-    api_key = getattr(settings, "EASY_SEND_SMS_API_KEY", "")
-    sender_id = getattr(settings, "EASY_SEND_SMS_SENDER_ID", "")
+    username = getattr(settings, "EGO_SMS_USERNAME", "")
+    api_key = getattr(settings, "EGO_SMS_API_KEY", "")
+    sender_id = getattr(settings, "EGO_SMS_SENDER_ID", "")
     missing_settings = [
         name
         for name, value in (
-            ("EASY_SEND_SMS_API_KEY", api_key),
-            ("EASY_SEND_SMS_SENDER_ID", sender_id),
+            ("EGO_SMS_USERNAME", username),
+            ("EGO_SMS_API_KEY", api_key),
+            ("EGO_SMS_SENDER_ID", sender_id),
         )
         if not value
     ]
@@ -142,16 +136,25 @@ def send_sms_to_number(phone_number, message, *, event_type, recipient=None, rel
         return result
 
     payload = {
-        "from": sender_id,
-        "to": normalized_number,
-        "text": message,
-        "type": _message_type(message),
+        "method": "SendSms",
+        "userdata": {
+            "username": username,
+            "password": api_key,
+        },
+        "msgdata": [
+            {
+                "number": normalized_number,
+                "message": message,
+                "senderid": sender_id,
+                "priority": "0",
+            }
+        ],
     }
 
     try:
         response_data = _send_sms_request(payload)
         response_text = json.dumps(response_data)
-        if response_data.get("status"):
+        if str(response_data.get("Status") or "").strip().lower() == "ok":
             result = SMSResult(
                 ok=True,
                 status=SMSNotificationLog.STATUS_SENT,
@@ -164,9 +167,9 @@ def send_sms_to_number(phone_number, message, *, event_type, recipient=None, rel
                 status=SMSNotificationLog.STATUS_FAILED,
                 response_text=response_text,
                 error_message=(
-                    response_data.get("description")
-                    or response_data.get("error")
-                    or "Easy Send SMS returned an unsuccessful response."
+                    response_data.get("Message")
+                    or response_data.get("message")
+                    or "EgoSMS returned an unsuccessful response."
                 ),
             )
     except HTTPError as exc:

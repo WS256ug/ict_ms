@@ -3,6 +3,7 @@ from decimal import Decimal, InvalidOperation
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
+from django.utils.crypto import constant_time_compare
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -14,6 +15,13 @@ def _request_data(request):
     if request.method == "POST":
         return request.POST
     return request.GET
+
+
+def _safe_raw_payload(data):
+    payload = data.copy()
+    if "key" in payload:
+        payload["key"] = "[redacted]"
+    return payload.urlencode()
 
 
 def _parse_decimal(value, field_name):
@@ -87,7 +95,7 @@ def gps_ingest(request):
             {"status": "error", "errors": {"id": "Unknown or inactive tracker device."}},
             status=404,
         )
-    if tracker.api_key != api_key:
+    if not constant_time_compare(tracker.api_key, api_key):
         return JsonResponse(
             {"status": "error", "errors": {"key": "Invalid API key."}},
             status=403,
@@ -114,7 +122,7 @@ def gps_ingest(request):
                 else None
             ),
             recorded_at=_parse_recorded_at(data.get("timestamp")),
-            raw_payload=request.META.get("QUERY_STRING", ""),
+            raw_payload=_safe_raw_payload(data),
         )
         reading.full_clean()
     except ValidationError as exc:
